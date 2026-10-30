@@ -54,7 +54,7 @@ function CheckoutSuccessContent() {
           <FontAwesomeIcon icon={faCircleCheck} />
         </div>
         <span className="text-[11px] font-mono tracking-[0.3em] uppercase text-[#d4af37] block">
-          BIÊN NHẬN ĐIỆN TỬ BẢO MẬT HAUTE HORLOGERIE
+          BIÊN NHẬN ĐIỆN TỬ BẢO MẬT BRU_WATCH
         </span>
         <h1 className="font-serif text-2xl sm:text-4xl font-normal text-foreground">
           Đơn Đặt Mua Đã Được Tiếp Nhận
@@ -110,7 +110,7 @@ function CheckoutSuccessContent() {
 
                   <div className="flex justify-between p-2.5 rounded-xl bg-muted/40 border border-border">
                     <span className="text-muted-foreground">Chủ Tài Khoản:</span>
-                    <strong className="text-foreground">MAISON DES MONTRES VIETNAM</strong>
+                    <strong className="text-foreground">BRU_WATCH VIETNAM</strong>
                   </div>
 
                   <div className="flex justify-between items-center p-2.5 rounded-xl bg-muted/40 border border-border">

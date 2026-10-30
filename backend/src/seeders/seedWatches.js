@@ -6,7 +6,7 @@ const SAMPLE_CATEGORIES = [
   { id: 'dive', name: 'Đồng hồ Lặn Dive Watch', slug: 'dive', description: 'Bộ sưu tập chuyên dụng chống nước sâu' },
   { id: 'tourbillon', name: 'Grand Complication Tourbillon', slug: 'tourbillon', description: 'Cỗ máy đỉnh cao chống trọng lực trái đất' },
   { id: 'chronograph', name: 'Chronograph Đua Xe', slug: 'chronograph', description: 'Đo tốc độ thể thao chuẩn xác' },
-  { id: 'royal', name: 'Royal Haute Horlogerie', slug: 'royal', description: 'Phong cách quý tộc hoàng gia Thụy Sĩ' },
+  { id: 'royal', name: 'Royal BRU_WATCH', slug: 'royal', description: 'Phong cách quý tộc hoàng gia Thụy Sĩ' },
   { id: 'jewelry', name: 'Kim Cương Đá Quý Haute Joaillerie', slug: 'jewelry', description: 'Tuyệt phẩm nạm kim cương và vàng hồng' },
 ];
 

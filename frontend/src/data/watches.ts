@@ -1,3 +1,13 @@
+export interface WatchVariant {
+  id: number;
+  sku: string;
+  priceVND: number;
+  priceUSD: number;
+  mauMatSo?: string;
+  images: string[];
+  stockCount: number;
+}
+
 export interface WatchItem {
   id: string;
   name: string;
@@ -13,6 +23,10 @@ export interface WatchItem {
   isLimited?: boolean;
   rating: number;
   reviewsCount: number;
+  variants?: WatchVariant[];
+  warrantyMonths?: number;
+  gender?: "male" | "female" | "unisex" | string;
+  features?: { id: number; name: string; slug: string }[];
   specs: {
     diameter: string;
     thickness: string;
@@ -120,7 +134,7 @@ export const WATCHES: WatchItem[] = [
     id: "chrono-royal-oak-emerald",
     name: "Royal Oak 'Jumbo' Extra-Thin Emerald Dial",
     brand: "Audemars & Piguet",
-    series: "Haute Horlogerie Le Brassus",
+    series: "BRU_WATCH Le Brassus",
     category: "royal",
     priceUSD: 48500,
     priceVND: 1230000000,
@@ -129,7 +143,7 @@ export const WATCHES: WatchItem[] = [
       "/images/royaloak-emerald.jpg",
       "/images/tourbillon-emerald.jpg",
     ],
-    tag: "Haute Horlogerie",
+    tag: "BRU_WATCH",
     isLimited: true,
     rating: 5.0,
     reviewsCount: 29,
@@ -231,7 +245,7 @@ export const WATCHES: WatchItem[] = [
       clasp: "Khóa cài kim bằng vàng 18K khắc triện đầu thú",
     },
     description:
-      "Sự kết hợp hoàn hảo giữa tinh thần đua xe cổ điển và thẩm mỹ Haute Horlogerie. Mặt số màu xanh lá đua xe British Racing Green đối lập với các mặt số phụ màu vàng champagne tạo nên sự ấm áp, lịch lãm của quý ông thượng lưu.",
+      "Sự kết hợp hoàn hảo giữa tinh thần đua xe cổ điển và thẩm mỹ BRU_WATCH. Mặt số màu xanh lá đua xe British Racing Green đối lập với các mặt số phụ màu vàng champagne tạo nên sự ấm áp, lịch lãm của quý ông thượng lưu.",
     highlights: [
       "Cơ chế bấm giờ bấm êm mượt với Column Wheel & Vertical Clutch",
       "Mặt số xanh British Racing Green sâu thẳm quý phái",

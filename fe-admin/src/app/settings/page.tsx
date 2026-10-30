@@ -31,7 +31,7 @@ export default function SettingsPage() {
               <label className="text-stone-300 block mb-1">Tên Chuỗi Boutique</label>
               <input
                 type="text"
-                defaultValue="ChronoLuxe Haute Horlogerie Genève"
+                defaultValue="BRU_WATCH Genève"
                 className="w-full px-3 py-2 rounded bg-[#070e0a] border border-white/[0.08] text-white focus:border-[#d4af37] focus:outline-none"
               />
             </div>

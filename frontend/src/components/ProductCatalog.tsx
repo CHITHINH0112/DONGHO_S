@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { apiClient } from "@/lib/axios";
+import { mapDbProductToWatchItem } from "@/utils/productMapper";
 import Link from "next/link";
 import { WATCHES, WatchItem } from "@/data/watches";
 import ProductCard from "./ProductCard";
@@ -16,7 +18,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 type CategoryFilter = "all" | "spotlight" | "dive" | "tourbillon" | "royal" | "chronograph" | "jewelry";
-type BrandFilter = "all" | "Rolex Genève" | "Audemars & Piguet" | "Patek & Philippe" | "Aurélien Genève" | "Verdant Horology";
+type BrandFilter = string;
 type SortOption = "featured" | "price-desc" | "price-asc" | "rating";
 
 export default function ProductCatalog() {
@@ -25,6 +27,24 @@ export default function ProductCatalog() {
   const [sortOption, setSortOption] = useState<SortOption>("featured");
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "horizontal">("grid");
+  const [dbWatches, setDbWatches] = useState<WatchItem[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    apiClient
+      .get("/products?limit=50&status=active")
+      .then((res) => {
+        if (res.data?.success && Array.isArray(res.data?.data) && res.data.data.length > 0) {
+          if (isMounted) setDbWatches(res.data.data.map(mapDbProductToWatchItem));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const activeWatches = dbWatches.length > 0 ? dbWatches : WATCHES;
 
   const handleCategoryChange = (cat: CategoryFilter) => {
     watchAudio.tick();
@@ -37,7 +57,7 @@ export default function ProductCatalog() {
   };
 
   const filteredWatches = useMemo(() => {
-    return WATCHES.filter((w) => {
+    return activeWatches.filter((w) => {
       const matchesCategory =
         selectedCategory === "all" || w.category === selectedCategory;
       const matchesBrand =
@@ -57,7 +77,7 @@ export default function ProductCatalog() {
       if (sortOption === "rating") return b.rating - a.rating;
       return 0;
     });
-  }, [selectedCategory, selectedBrand, searchQuery, sortOption]);
+  }, [selectedCategory, selectedBrand, searchQuery, sortOption, activeWatches]);
 
   const categories: { id: CategoryFilter; label: string }[] = [
     { id: "all", label: "Tất Cả Các Dòng" },

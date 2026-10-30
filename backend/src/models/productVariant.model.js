@@ -31,12 +31,6 @@ export const ProductVariant = sequelize.define('ProductVariant', {
     allowNull: false,
     defaultValue: 'active',
   },
-  chatLieuDayDeo: {
-    type: DataTypes.STRING(100),
-    allowNull: true,
-    field: 'Chat_Lieu_Day_Deo',
-    comment: 'Dây đeo (VD: Thép không gỉ, Dây da...)',
-  },
   mauMatSo: {
     type: DataTypes.STRING(50),
     allowNull: true,

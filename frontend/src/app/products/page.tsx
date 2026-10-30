@@ -6,6 +6,8 @@ import Link from "next/link";
 import { WATCHES, WatchItem } from "@/data/watches";
 import ProductCard from "@/components/ProductCard";
 import ProductFilterSidebar, { FilterState } from "@/components/ProductFilterSidebar";
+import { apiClient } from "@/lib/axios";
+import { mapDbProductToWatchItem } from "@/utils/productMapper";
 import { watchAudio } from "@/utils/audio";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -20,6 +22,7 @@ import {
   faCertificate,
   faTableCells,
   faTableList,
+  faSpinner,
 } from "@fortawesome/free-solid-svg-icons";
 
 function ProductsContent() {
@@ -73,9 +76,64 @@ function ProductsContent() {
     });
   };
 
+  const [dbWatches, setDbWatches] = useState<WatchItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [dbBrands, setDbBrands] = useState<{ id: string; label: string; icon?: any }[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchCatalog = async () => {
+      try {
+        setLoading(true);
+        const [resProd, resBrands] = await Promise.allSettled([
+          apiClient.get("/products?limit=100&status=active"),
+          apiClient.get("/brands"),
+        ]);
+
+        if (resProd.status === "fulfilled" && resProd.value.data?.success) {
+          const list = resProd.value.data.data;
+          if (Array.isArray(list) && list.length > 0) {
+            const mapped = list.map(mapDbProductToWatchItem);
+            if (isMounted) setDbWatches(mapped);
+          } else {
+            if (isMounted) setDbWatches([]);
+          }
+        } else {
+          if (isMounted) setDbWatches(WATCHES);
+        }
+
+        if (resBrands.status === "fulfilled" && resBrands.value.data?.success) {
+          const bList = resBrands.value.data.data;
+          if (Array.isArray(bList) && bList.length > 0) {
+            const mappedBrands = [
+              { id: "all", label: "Tất cả thương hiệu" },
+              ...bList.map((b: any) => ({
+                id: b.name,
+                label: b.name,
+              })),
+            ];
+            if (isMounted) setDbBrands(mappedBrands);
+          }
+        }
+      } catch (err) {
+        console.warn("Không thể tải sản phẩm từ API, sử dụng dữ liệu dự phòng:", err);
+        if (isMounted) setDbWatches(WATCHES);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchCatalog();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const activeWatches = dbWatches.length > 0 ? dbWatches : (loading ? [] : WATCHES);
+
   // Filter & Sort Logic
   const filteredWatches = useMemo(() => {
-    return WATCHES.filter((watch) => {
+    return activeWatches.filter((watch) => {
       // Brand filter
       if (filters.brand !== "all") {
         const watchBrandNorm = watch.brand.toLowerCase();
@@ -181,7 +239,7 @@ function ProductsContent() {
           <div className="relative z-10 max-w-3xl">
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/[0.03] dark:bg-white/[0.03] border border-[#d4af37]/35 text-[#d4af37] text-xs font-mono tracking-[0.2em] uppercase mb-4 backdrop-blur-md">
               <FontAwesomeIcon icon={faCertificate} className="w-3 h-3 text-[#d4af37]" />
-              <span>Haute Horlogerie • 100% Nguyên Bản Thụy Sĩ</span>
+              <span>BRU_WATCH • 100% Nguyên Bản Thụy Sĩ</span>
             </div>
 
             <h1 className="font-serif text-3xl sm:text-5xl lg:text-6xl font-normal text-foreground tracking-tight leading-tight">
@@ -189,7 +247,7 @@ function ProductsContent() {
             </h1>
 
             <p className="mt-4 text-xs sm:text-sm text-muted-foreground font-light leading-relaxed max-w-2xl font-sans">
-              Khám phá hơn 100+ cỗ máy cơ học đỉnh cao được bảo quản trong buồng cân bằng nhiệt ẩm tiêu chuẩn Geneva. Bảo hành chính hãng 5 năm và vận chuyển xe bọc thép bảo mật.
+              Khám phá hơn 100+ cỗ máy cơ học đỉnh cao được bảo quản trong buồng cân bằng nhiệt ẩm tiêu chuẩn Geneva. Bảo hành chính hãng 5 năm và vận chuyển xe bảo mật.
             </p>
           </div>
         </section>
@@ -230,11 +288,10 @@ function ProductsContent() {
                     watchAudio.tick();
                     setViewMode("grid");
                   }}
-                  className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-mono transition-all cursor-pointer ${
-                    viewMode === "grid"
+                  className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-mono transition-all cursor-pointer ${viewMode === "grid"
                       ? "bg-[#006039] text-white shadow-xs font-bold"
                       : "text-muted-foreground dark:text-white/60 hover:text-foreground dark:hover:text-white"
-                  }`}
+                    }`}
                   title="Chế độ lưới: 1 dòng 3 sản phẩm"
                   aria-label="Chế độ lưới 3 sản phẩm"
                 >
@@ -247,11 +304,10 @@ function ProductsContent() {
                     watchAudio.tick();
                     setViewMode("horizontal");
                   }}
-                  className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-mono transition-all cursor-pointer ${
-                    viewMode === "horizontal"
+                  className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-mono transition-all cursor-pointer ${viewMode === "horizontal"
                       ? "bg-[#006039] text-white shadow-xs font-bold"
                       : "text-muted-foreground dark:text-white/60 hover:text-foreground dark:hover:text-white"
-                  }`}
+                    }`}
                   title="Chế độ danh sách: 1 dòng 1 sản phẩm chi tiết"
                   aria-label="Chế độ thẻ ngang chi tiết"
                 >
@@ -387,11 +443,17 @@ function ProductsContent() {
               isOpenMobile={isMobileFilterOpen}
               onCloseMobile={() => setIsMobileFilterOpen(false)}
               totalResults={filteredWatches.length}
+              brandsList={dbBrands.length > 1 ? dbBrands : undefined}
             />
 
             {/* Products Grid or Empty State */}
             <div className="flex-1">
-              {filteredWatches.length > 0 ? (
+              {loading ? (
+                <div className="py-24 text-center flex flex-col items-center justify-center gap-3">
+                  <FontAwesomeIcon icon={faSpinner} className="fa-spin text-3xl text-[#d4af37]" />
+                  <span className="text-xs font-mono text-zinc-400">Đang đồng bộ cỗ máy kiệt tác từ kho BRU_WATCH...</span>
+                </div>
+              ) : filteredWatches.length > 0 ? (
                 viewMode === "grid" ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 sm:gap-7">
                     {filteredWatches.map((watch) => (

@@ -21,7 +21,7 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Haute Horlogerie Management Portal | Hệ Thống Quản Trị Đồng Hồ Xa Xỉ",
+  title: "BRU_WATCH Management Portal | Hệ Thống Quản Trị Đồng Hồ Xa Xỉ",
   description: "Cổng quản trị cao cấp dành cho cửa hàng đồng hồ Thụy Sĩ: Rolex, Patek Philippe, Audemars Piguet",
 };
 

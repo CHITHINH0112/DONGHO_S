@@ -1,6 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { apiClient } from "@/lib/axios";
+import { mapDbProductToWatchItem } from "@/utils/productMapper";
 import Image from "next/image";
 import Link from "next/link";
 import { WATCHES, WatchItem } from "@/data/watches";
@@ -26,7 +28,27 @@ export default function BestSellersSection() {
     "chrono-diamond-emerald-haute",
   ];
 
-  const bestSellers = bestSellerIds
+  const [dbWatches, setDbWatches] = useState<WatchItem[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    apiClient
+      .get("/products?limit=4&status=active")
+      .then((res) => {
+        if (res.data?.success && Array.isArray(res.data?.data) && res.data.data.length > 0) {
+          if (isMounted) setDbWatches(res.data.data.map(mapDbProductToWatchItem));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const bestSellers =
+    dbWatches.length > 0
+      ? dbWatches.slice(0, 4)
+      : bestSellerIds
     .map((id) => WATCHES.find((w) => w.id === id))
     .filter((w): w is WatchItem => Boolean(w));
 
@@ -73,6 +95,13 @@ export default function BestSellersSection() {
                   src={watch.image}
                   alt={watch.name}
                   fill
+                  unoptimized
+                  onError={(e) => {
+                    const target = e.currentTarget as HTMLImageElement;
+                    if (!target.src.includes('submariner-emerald.jpg')) {
+                      target.src = '/images/submariner-emerald.jpg';
+                    }
+                  }}
                   className="object-contain p-6 group-hover:scale-108 transition-transform duration-500"
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
                 />
@@ -88,17 +117,14 @@ export default function BestSellersSection() {
                   {watch.brand}
                 </div>
 
-                {/* Quick View Button on Hover */}
-                <button
-                  onClick={() => {
-                    watchAudio.click();
-                    setSelectedWatchModal(watch);
-                  }}
+                {/* Link trực tiếp sang trang chi tiết sản phẩm */}
+                <Link
+                  href={`/products/${watch.id}`}
                   className="absolute inset-0 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white text-xs font-mono uppercase tracking-wider backdrop-blur-xs cursor-pointer"
                 >
                   <FontAwesomeIcon icon={faEye} className="w-3.5 h-3.5 text-[#d4af37]" />
                   <span>Xem Chi Tiết Máy</span>
-                </button>
+                </Link>
               </div>
 
               {/* Watch Details */}

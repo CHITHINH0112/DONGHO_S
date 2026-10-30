@@ -33,6 +33,7 @@ interface ProductFilterSidebarProps {
   isOpenMobile: boolean;
   onCloseMobile: () => void;
   totalResults: number;
+  brandsList?: { id: string; label: string; icon?: any }[];
 }
 
 export const BRANDS = [
@@ -87,7 +88,9 @@ export default function ProductFilterSidebar({
   isOpenMobile,
   onCloseMobile,
   totalResults,
+  brandsList,
 }: ProductFilterSidebarProps) {
+  const displayBrands = brandsList && brandsList.length > 1 ? brandsList : BRANDS;
   const content = (
     <div className="space-y-7 text-xs font-mono">
       {/* Header and Reset */}
@@ -114,7 +117,7 @@ export default function ProductFilterSidebar({
           Thương Hiệu Thụy Sĩ
         </label>
         <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1 scrollbar-thin">
-          {BRANDS.map((b) => {
+          {displayBrands.map((b) => {
             const isSelected = filters.brand === b.id;
             return (
               <button
@@ -128,7 +131,7 @@ export default function ProductFilterSidebar({
                 }`}
               >
                 <span className="flex items-center gap-2 truncate">
-                  <FontAwesomeIcon icon={b.icon} className="w-3 h-3 text-[#d4af37]/80 shrink-0" />
+                  <FontAwesomeIcon icon={b.icon || faCrown} className="w-3 h-3 text-[#d4af37]/80 shrink-0" />
                   <span className="truncate">{b.label}</span>
                 </span>
                 {isSelected && <FontAwesomeIcon icon={faCheck} className="w-3 h-3 text-[#d4af37]" />}

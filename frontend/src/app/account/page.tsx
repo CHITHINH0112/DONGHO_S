@@ -69,7 +69,7 @@ export default function AccountProfilePage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Column: Digital VIP Privilege Card & Spending Status (5 cols) */}
         <div className="lg:col-span-5 space-y-6">
-          {/* Haute Horlogerie Metallic Hologram VIP Card */}
+          {/* BRU_WATCH Metallic Hologram VIP Card */}
           <div className="relative w-full aspect-[1.586/1] rounded-3xl p-6 sm:p-7 shadow-2xl overflow-hidden border border-[#d4af37]/40 bg-gradient-to-br from-[#0e2418] via-[#09150e] to-[#040806] text-white flex flex-col justify-between group">
             {/* Holographic Sheen Overlay */}
             <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-[#d4af37]/10 to-transparent opacity-60 group-hover:opacity-100 transition-opacity pointer-events-none" />

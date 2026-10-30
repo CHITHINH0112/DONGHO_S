@@ -31,7 +31,7 @@ export default function AccountNav() {
           Khu Vực Dành Riêng Cho Quý Khách Hội Viên
         </h2>
         <p className="text-xs text-muted-foreground max-w-md mt-2 font-light">
-          Vui lòng đăng nhập bằng thẻ thành viên bảo mật Maison Des Montres để truy cập hồ sơ đặc quyền, lịch sử vận đơn xe bọc thép và sổ địa chỉ.
+          Vui lòng đăng nhập bằng thẻ thành viên bảo mật BRU_WATCH để truy cập hồ sơ đặc quyền, lịch sử vận đơn xe bọc thép và sổ địa chỉ.
         </p>
         <button
           onClick={() => openAuthModal("login")}

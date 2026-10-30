@@ -55,7 +55,7 @@ const LUXURY_BRANDS: LuxuryBrand[] = [
     name: "Patek Philippe",
     origin: "Genève, Thụy Sĩ",
     founded: "1839",
-    tagline: "Đế Vương Haute Horlogerie - Gìn Giữ Di Sản Cho Thế Hệ Mai Sau",
+    tagline: "Đế Vương BRU_WATCH - Gìn Giữ Di Sản Cho Thế Hệ Mai Sau",
     signature: "Grand Complication & Chạm Khắc Kim Hoàn Thủ Công",
     modelsCount: "9 Mẫu Phòng VIP",
     faIcon: faAward,

@@ -46,7 +46,7 @@ export default function WarrantiesPage() {
   return (
     <AdminShell
       title="Bảo Hành & Phòng Kỹ Thuật Thụy Sĩ"
-      subtitle="Theo dõi tiếp nhận, kiểm định chống nước, lau dầu bảo dưỡng máy cơ chuẩn Haute Horlogerie"
+      subtitle="Theo dõi tiếp nhận, kiểm định chống nước, lau dầu bảo dưỡng máy cơ chuẩn BRU_WATCH"
     >
       <div className="space-y-6">
         <div className="flex items-center justify-between">

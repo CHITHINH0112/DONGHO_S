@@ -69,6 +69,12 @@ export const Product = sequelize.define('Product', {
     field: 'Chat_Lieu_Nieng',
     comment: 'Niềng (VD: Thép không gỉ)',
   },
+  chatLieuDayDeo: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    field: 'Chat_Lieu_Day_Deo',
+    comment: 'Dây đeo (VD: Thép không gỉ, Dây da...)',
+  },
   khaNangChongNuoc: {
     type: DataTypes.STRING(50),
     allowNull: true,

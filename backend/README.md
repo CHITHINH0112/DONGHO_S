@@ -163,8 +163,18 @@ backend/
 - `GET /staff`: Danh sách nhân viên và chức vụ *(Manager)*.
 - `POST /staff`: Tạo tài khoản nhân viên mới *(Manager)*.
 - `GET /shifts`: Danh sách ca trực thu ngân.
-- `POST /shifts/open`: Mở ca thu ngân, nhập số tiền mặt đếm được khi nhận ca.
-- `PUT /shifts/:shiftId/close`: Chốt và kết thúc ca thu ngân, kiểm kê số tiền chốt ca.
+<!-- - `POST /shifts/open`: Mở ca thu ngân, nhập số tiền mặt đếm được khi nhận ca. -->
+<!-- - `PUT /shifts/:shiftId/close`: Chốt và kết thúc ca thu ngân, kiểm kê số tiền chốt ca. -->
+
+
+
+- `GET /shifts`: Danh sách lịch sử ca trực và trạng thái đối soát quỹ *(Manager / Cashier)*.
+- `GET /shifts/current`: Lấy thông tin ca hiện tại của quầy (đang chờ confirm hoặc đang mở) *(Cashier)*.
+- `POST /shifts`: Admin/Quản lý tạo ca mới và giao tiền quỹ (`cashierId`, `tienGiaoDauCa`) -> Trạng thái: `opening_cash_status = 'pending'` *(Admin / Manager)*.
+- `PUT /shifts/:shiftId/confirm`: Thu ngân đếm két và xác nhận nhận ca (`tienMatDemDuocKhiNhanCa`, `note`) -> Tự động so khớp đổi sang `confirmed` hoặc `discrepancy` và kích hoạt ca sang `open` *(Cashier)*.
+- `PUT /shifts/:shiftId/close`: Chốt ca thu ngân. Thu ngân gửi số `tienMatDemDuocKhiChotCa` để đối soát với `Tien_Phai_Co_Khi_Chot_Ca`, chuyển trạng thái sang `closed` *(Cashier)*.
+
+
 - `GET /approvals`: Danh sách yêu cầu phê duyệt (hủy đơn, chiết khấu vượt mức, chênh lệch kho).
 - `POST /approvals`: Tạo phiếu yêu cầu phê duyệt.
 - `PUT /approvals/:id/process`: Duyệt / từ chối phiếu yêu cầu *(Manager)*.

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { useAdminAuth } from '@/context/AdminAuthContext';
 import {
@@ -80,7 +81,7 @@ export default function AdminHeader({
           </div>
           <input
             type="text"
-            placeholder="Tìm mã đơn, số serial, khách VIP..."
+            placeholder="Tìm mã đơn, số serial,..."
             className="w-64 lg:w-80 pl-9 pr-14 py-2 bg-[#0c1611] text-xs text-stone-200 placeholder-stone-400 rounded-lg border border-white/[0.08] focus:border-[#d4af37]/50 focus:outline-none focus:ring-1 focus:ring-[#d4af37]/30 transition-all"
           />
           <div className="absolute inset-y-0 right-0 pr-2 flex items-center">
@@ -93,7 +94,7 @@ export default function AdminHeader({
         {/* Live Clock & Boutique Location */}
         <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0c1611]/70 border border-white/[0.06] text-xs text-stone-300">
           <FontAwesomeIcon icon={faBuildingColumns} className="text-[#d4af37] text-[11px]" />
-          <span>Boutique Đồng Khởi</span>
+          <span></span>
           <span className="text-stone-400">•</span>
           <FontAwesomeIcon icon={faClock} className="text-emerald-400 text-[11px]" />
           <span className="font-mono text-stone-200 font-medium">
@@ -123,20 +124,20 @@ export default function AdminHeader({
 
         {/* Dynamic Action Button based on position */}
         {admin?.role === 'admin' || admin?.position === 'manager' || admin?.position === 'sales' ? (
-          <button className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-gradient-to-r from-[#00844e] to-[#006039] hover:from-[#009b5c] hover:to-[#007345] text-white text-xs font-medium tracking-wide shadow-[0_4px_15px_rgba(0,132,78,0.25)] border border-emerald-400/30 transition-all">
+          <Link href="/products" className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-gradient-to-r from-[#00844e] to-[#006039] hover:from-[#009b5c] hover:to-[#007345] text-white text-xs font-medium tracking-wide shadow-[0_4px_15px_rgba(0,132,78,0.25)] border border-emerald-400/30 transition-all cursor-pointer">
             <FontAwesomeIcon icon={faPlus} className="text-xs" />
-            <span className="hidden sm:inline">Tạo Đơn Hàng</span>
-          </button>
+            <span className="hidden sm:inline">Kho Đồng Hồ & Mẫu</span>
+          </Link>
         ) : admin?.position === 'warehouse' ? (
-          <button className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white text-xs font-medium tracking-wide shadow-[0_4px_15px_rgba(217,119,6,0.25)] border border-amber-400/30 transition-all">
+          <Link href="/products" className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white text-xs font-medium tracking-wide shadow-[0_4px_15px_rgba(217,119,6,0.25)] border border-amber-400/30 transition-all">
             <FontAwesomeIcon icon={faPlus} className="text-xs" />
             <span className="hidden sm:inline">Nhập Kho Mới</span>
-          </button>
+          </Link>
         ) : (
-          <button className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white text-xs font-medium tracking-wide shadow-[0_4px_15px_rgba(2,132,199,0.25)] border border-sky-400/30 transition-all">
+          <Link href="/products" className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-gradient-to-r from-sky-600 to-sky-700 hover:from-sky-500 hover:to-sky-600 text-white text-xs font-medium tracking-wide shadow-[0_4px_15px_rgba(2,132,199,0.25)] border border-sky-400/30 transition-all">
             <FontAwesomeIcon icon={faPlus} className="text-xs" />
             <span className="hidden sm:inline">Tiếp Nhận Sửa Chữa</span>
-          </button>
+          </Link>
         )}
       </div>
     </header>

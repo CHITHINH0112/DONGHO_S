@@ -91,7 +91,7 @@ export default function GoogleCallbackPage() {
         )}
 
         <div className="text-[10px] font-mono text-white/40 mt-8 tracking-widest uppercase">
-          Maison Des Montres • Haute Horlogerie
+          BRU_WATCH • SWISS BOUTIQUE
         </div>
       </div>
     </div>

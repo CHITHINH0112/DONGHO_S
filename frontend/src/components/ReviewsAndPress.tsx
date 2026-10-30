@@ -31,7 +31,7 @@ export default function ReviewsAndPress() {
       quote:
         "“Khoản đầu tư xứng tầm di sản. Độ chuẩn xác vượt chuẩn COSC và giá trị bảo tồn trường tồn cùng năm tháng.”",
       author: "Elizabeth Doerr",
-      role: "Haute Horlogerie Contributor",
+      role: "BRU_WATCH Contributor",
     },
   ];
 

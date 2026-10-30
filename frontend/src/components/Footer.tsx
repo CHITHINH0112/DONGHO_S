@@ -34,7 +34,7 @@ export default function Footer() {
             <div className="flex items-center gap-2 text-[#d4af37] mb-2.5">
               <FontAwesomeIcon icon={faGem} className="w-4 h-3.5 text-[#d4af37]" />
               <span className="text-[10px] font-mono uppercase tracking-[0.25em] text-[#d4af37] font-semibold">
-                BẢN TIN MAISON DES MONTRES GENÈVE
+                BẢN TIN BRU_WATCH GENÈVE
               </span>
             </div>
             <h3 className="font-serif text-2xl sm:text-3xl font-normal tracking-tight text-white">
@@ -77,10 +77,10 @@ export default function Footer() {
           <div className="space-y-4">
             <div className="flex items-center gap-2.5">
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#d4af37] to-[#8c6a21] flex items-center justify-center text-black font-serif font-black text-xs shadow-md">
-                M
+                B
               </div>
               <span className="font-serif font-medium text-lg tracking-[0.15em] text-foreground dark:text-white">
-                MAISON DES MONTRES
+                BRU_WATCH
               </span>
             </div>
             <p className="text-muted-foreground dark:text-white/55 leading-relaxed text-xs font-sans font-light">
@@ -147,7 +147,7 @@ export default function Footer() {
         {/* Bottom Legal */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-muted-foreground dark:text-white/40 text-[11px] font-mono">
           <div>
-            © 2026 Maison Des Montres Genève. Tất cả các quyền được bảo lưu.
+            © 2026 BRU_WATCH Genève. Tất cả các quyền được bảo lưu.
           </div>
           <div className="flex items-center gap-6">
             <span className="hover:text-foreground dark:hover:text-white cursor-pointer transition-colors">Chính Sách Bảo Mật</span>

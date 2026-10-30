@@ -55,7 +55,7 @@ const SAMPLE_WARRANTIES: Record<string, WarrantyData> = {
     purchaseDate: "15/01/2026",
     expiryDate: "15/01/2031",
     status: "active",
-    boutique: "Maison Des Montres - Đồng Khởi Salon, TP.HCM",
+    boutique: "BRU_WATCH - Đồng Khởi Salon, TP.HCM",
     calibre: "Calibre 4131 In-house Superlative Chronometer",
     waterResistance: "100m / 330 feet (Triplock)",
     serviceHistory: [
@@ -81,7 +81,7 @@ const SAMPLE_WARRANTIES: Record<string, WarrantyData> = {
     purchaseDate: "20/02/2026",
     expiryDate: "20/02/2031",
     status: "active",
-    boutique: "Maison Des Montres - Tràng Tiền Boutique, Hà Nội",
+    boutique: "BRU_WATCH - Tràng Tiền Boutique, Hà Nội",
     calibre: "Calibre 7121 In-house Self-winding (28,800 vph)",
     waterResistance: "50m / 165 feet",
     serviceHistory: [
@@ -102,7 +102,7 @@ const SAMPLE_WARRANTIES: Record<string, WarrantyData> = {
     purchaseDate: "10/03/2025",
     expiryDate: "10/03/2030",
     status: "active",
-    boutique: "Maison Des Montres - Private Salon",
+    boutique: "BRU_WATCH - Private Salon",
     calibre: "Calibre 26-330 S C Patek Philippe Seal",
     waterResistance: "120m / 400 feet",
     serviceHistory: [
@@ -161,14 +161,14 @@ function WarrantyLookupContent() {
       setSearchedData({
         cardCode: `MDM-WAR-2026-${Math.floor(1000 + Math.random() * 9000)}`,
         serialNumber: target,
-        watchName: "Haute Horlogerie Timepiece Special Commission",
+        watchName: "BRU_WATCH Timepiece Special Commission",
         brand: "Swiss Manufacture",
         image: WATCHES[0].image,
         customerName: "Quý Khách Hội Viên VIP",
         purchaseDate: "01/01/2026",
         expiryDate: "01/01/2031",
         status: "active",
-        boutique: "Maison Des Montres Flagship Salon",
+        boutique: "BRU_WATCH Flagship Salon",
         calibre: "Manufacture Mechanical Calibre COSC Certified",
         waterResistance: "100m / 10 bar",
         serviceHistory: [
@@ -197,7 +197,7 @@ function WarrantyLookupContent() {
           Tra Cứu Thẻ Bảo Hành Toàn Cầu
         </h1>
         <p className="text-xs text-muted-foreground mt-2 font-light leading-relaxed">
-          Tra cứu dữ liệu xuất xưởng, nguồn gốc cỗ máy và lịch sử dịch vụ bảo dưỡng trực tiếp từ cơ sở dữ liệu bảo mật Haute Horlogerie.
+          Tra cứu dữ liệu xuất xưởng, nguồn gốc cỗ máy và lịch sử dịch vụ bảo dưỡng trực tiếp từ cơ sở dữ liệu bảo mật BRU_WATCH.
         </p>
       </div>
 

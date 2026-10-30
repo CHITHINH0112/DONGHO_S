@@ -6,6 +6,8 @@ import {
   updateProduct,
   deleteProduct,
   addProductVariant,
+  updateProductVariant,
+  deleteProductVariant,
 } from '../controllers/product.controller.js';
 import { verifyToken, authorizeRoles, authorizePositions } from '../middlewares/auth.middleware.js';
 import { requireFields } from '../middlewares/validate.middleware.js';
@@ -49,6 +51,22 @@ router.post(
   authorizePositions('manager', 'warehouse'),
   requireFields('sku', 'price'),
   addProductVariant
+);
+
+router.put(
+  '/:id/variants/:variantId',
+  verifyToken,
+  authorizeRoles('admin', 'staff'),
+  authorizePositions('manager', 'warehouse'),
+  updateProductVariant
+);
+
+router.delete(
+  '/:id/variants/:variantId',
+  verifyToken,
+  authorizeRoles('admin'),
+  authorizePositions('manager'),
+  deleteProductVariant
 );
 
 export default router;

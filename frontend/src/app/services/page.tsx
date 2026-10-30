@@ -129,7 +129,7 @@ export default function ServicesPage() {
           <FontAwesomeIcon icon={faWrench} className="w-6 h-6" />
         </div>
         <span className="text-[10px] font-mono tracking-[0.3em] uppercase text-[#d4af37] block">
-          HAUTE HORLOGERIE ATELIER • GENÈVE STANDARDS
+          BRU_WATCH ATELIER • GENÈVE STANDARDS
         </span>
         <h1 className="font-serif text-2xl sm:text-4xl font-normal text-foreground mt-1">
           Dịch Vụ Kỹ Thuật & Bảo Dưỡng Thụy Sĩ

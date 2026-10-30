@@ -82,7 +82,7 @@ export const getAllProducts = async (query = {}) => {
       {
         model: ProductVariant,
         as: 'variants',
-        attributes: ['id', 'sku', 'price', 'costPrice', 'status', 'chatLieuDayDeo', 'mauMatSo'],
+        attributes: ['id', 'sku', 'price', 'costPrice', 'status', 'mauMatSo'],
         include: [
           {
             model: ProductVariantImage,
@@ -152,15 +152,28 @@ export const getProductByIdOrSlug = async (identifier) => {
 };
 
 export const createProduct = async (data) => {
-  const product = await Product.create(data);
-  return product;
+  const { featureIds, ...productData } = data;
+  const product = await Product.create(productData);
+
+  if (Array.isArray(featureIds) && featureIds.length > 0) {
+    await product.setFeatures(featureIds);
+  }
+
+  return await getProductByIdOrSlug(product.id);
 };
 
 export const updateProduct = async (id, data) => {
   const product = await Product.findByPk(id);
   if (!product) return null;
-  await product.update(data);
-  return product;
+
+  const { featureIds, ...productData } = data;
+  await product.update(productData);
+
+  if (Array.isArray(featureIds)) {
+    await product.setFeatures(featureIds);
+  }
+
+  return await getProductByIdOrSlug(id);
 };
 
 export const deleteProduct = async (id) => {
@@ -172,14 +185,54 @@ export const deleteProduct = async (id) => {
 
 // Quản lý biến thể (Variants)
 export const addVariant = async (productId, data) => {
-  return await ProductVariant.create({ ...data, productId });
+  const { images, ...variantData } = data;
+  const variant = await ProductVariant.create({ ...variantData, productId });
+
+  if (Array.isArray(images) && images.length > 0) {
+    const imageRecords = images.map((img, idx) => ({
+      variantId: variant.id,
+      imageUrl: typeof img === 'string' ? img : img.imageUrl,
+      isDefault: idx === 0,
+      sortOrder: idx,
+    }));
+    await ProductVariantImage.bulkCreate(imageRecords);
+  }
+
+  return await ProductVariant.findByPk(variant.id, {
+    include: [{ model: ProductVariantImage, as: 'images' }],
+  });
 };
 
 export const updateVariant = async (variantId, data) => {
   const variant = await ProductVariant.findByPk(variantId);
   if (!variant) return null;
-  await variant.update(data);
-  return variant;
+
+  const { images, ...variantData } = data;
+  await variant.update(variantData);
+
+  if (Array.isArray(images)) {
+    await ProductVariantImage.destroy({ where: { variantId } });
+    if (images.length > 0) {
+      const imageRecords = images.map((img, idx) => ({
+        variantId,
+        imageUrl: typeof img === 'string' ? img : img.imageUrl,
+        isDefault: idx === 0,
+        sortOrder: idx,
+      }));
+      await ProductVariantImage.bulkCreate(imageRecords);
+    }
+  }
+
+  return await ProductVariant.findByPk(variant.id, {
+    include: [{ model: ProductVariantImage, as: 'images' }],
+  });
+};
+
+export const deleteVariant = async (variantId) => {
+  const variant = await ProductVariant.findByPk(variantId);
+  if (!variant) return null;
+  await variant.destroy();
+  return true;
 };
 
 export default {
@@ -190,4 +243,5 @@ export default {
   deleteProduct,
   addVariant,
   updateVariant,
+  deleteVariant,
 };

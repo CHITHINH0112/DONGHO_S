@@ -118,17 +118,31 @@ export default function CartDrawer() {
                 </button>
               </div>
             ) : (
-              cart.map(({ watch, quantity }) => (
+              cart.map((entry) => {
+                const { watch, quantity, selectedVariant } = entry;
+                const entryId = entry.id || (selectedVariant ? `${watch.id}-var-${selectedVariant.id}` : watch.id);
+                const itemImage = selectedVariant?.images?.[0] || watch.image;
+                const itemPriceUSD = selectedVariant ? selectedVariant.priceUSD : watch.priceUSD;
+                const itemPriceVND = selectedVariant ? selectedVariant.priceVND : watch.priceVND;
+
+                return (
                 <div
-                  key={watch.id}
+                  key={entryId}
                   className="flex gap-4 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] relative group"
                 >
                   {/* Thumbnail */}
                   <div className="relative w-20 h-20 bg-black/40 border border-white/[0.04] rounded-xl overflow-hidden shrink-0">
                     <Image
-                      src={watch.image}
+                      src={itemImage}
                       alt={watch.name}
                       fill
+                      unoptimized
+                      onError={(e) => {
+                        const target = e.currentTarget as HTMLImageElement;
+                        if (!target.src.includes('submariner-emerald.jpg')) {
+                          target.src = '/images/submariner-emerald.jpg';
+                        }
+                      }}
                       className="object-contain p-1"
                     />
                   </div>
@@ -141,7 +155,7 @@ export default function CartDrawer() {
                           {watch.brand}
                         </span>
                         <button
-                          onClick={() => removeFromCart(watch.id)}
+                          onClick={() => removeFromCart(entryId)}
                           className="text-white/40 hover:text-rose-400 transition-colors"
                           title="Xóa khỏi giỏ"
                         >
@@ -152,7 +166,14 @@ export default function CartDrawer() {
                         {watch.name}
                       </h4>
                       <div className="text-xs font-mono font-semibold text-[#d4af37] mt-1">
-                        {formatPrice(watch.priceUSD, watch.priceVND)}
+                        {selectedVariant && (
+                          <div className="flex items-center gap-1.5 text-[10px] font-mono text-[#d4af37] mb-1">
+                            <span>{selectedVariant.mauMatSo}</span>
+                            <span>•</span>
+                            <span className="truncate max-w-[120px]">{selectedVariant.sku}</span>
+                          </div>
+                        )}
+                        {formatPrice(itemPriceUSD, itemPriceVND)}
                       </div>
                     </div>
 
@@ -160,7 +181,7 @@ export default function CartDrawer() {
                     <div className="flex items-center justify-between pt-2">
                       <div className="flex items-center border border-white/[0.1] rounded-lg bg-black/40 p-0.5">
                         <button
-                          onClick={() => updateQuantity(watch.id, -1)}
+                          onClick={() => updateQuantity(entryId, -1)}
                           className="w-6 h-6 flex items-center justify-center hover:bg-white/[0.1] rounded text-white/70"
                         >
                           <FontAwesomeIcon icon={faMinus} className="w-2.5 h-2.5" />
@@ -169,19 +190,20 @@ export default function CartDrawer() {
                           {quantity}
                         </span>
                         <button
-                          onClick={() => updateQuantity(watch.id, 1)}
+                          onClick={() => updateQuantity(entryId, 1)}
                           className="w-6 h-6 flex items-center justify-center hover:bg-white/[0.1] rounded text-white/70"
                         >
                           <FontAwesomeIcon icon={faPlus} className="w-2.5 h-2.5" />
                         </button>
                       </div>
                       <span className="text-xs font-mono text-white/50">
-                        {watch.specs.diameter}
+                        {selectedVariant?.sku || watch.specs.diameter}
                       </span>
                     </div>
                   </div>
                 </div>
-              ))
+                );
+              })
             )}
           </div>
 
@@ -282,7 +304,7 @@ export default function CartDrawer() {
               Đơn Hàng Đã Được Tiếp Nhận
             </h3>
             <p className="mt-2 text-xs text-white/70 leading-relaxed font-light">
-              Kính gửi Quý khách <strong className="text-[#d4af37] font-semibold">{customerName || "VIP"}</strong>, chuyên viên bảo an cao cấp của Maison Des Montres sẽ liên hệ qua số điện thoại <strong className="text-white font-semibold">{customerPhone || "của bạn"}</strong> trong vòng 15 phút để sắp xếp lịch giao đồng hồ bằng xe chuyên dụng bọc thép.
+              Kính gửi Quý khách <strong className="text-[#d4af37] font-semibold">{customerName || "VIP"}</strong>, chuyên viên bảo an cao cấp của BRU_WATCH sẽ liên hệ qua số điện thoại <strong className="text-white font-semibold">{customerPhone || "của bạn"}</strong> trong vòng 15 phút để sắp xếp lịch giao đồng hồ bằng xe chuyên dụng bọc thép.
             </p>
 
             <div className="mt-6 p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] text-left text-xs font-mono space-y-1.5">

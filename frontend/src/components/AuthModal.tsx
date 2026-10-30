@@ -193,7 +193,7 @@ export default function AuthModal() {
             Cổng Khách Hàng VIP Salon
           </h3>
           <p className="text-[11px] font-mono tracking-[0.2em] uppercase text-[#d4af37] mt-1">
-            MAISON DES MONTRES • HAUTE HORLOGERIE
+            BRU_WATCH VIP SALON • GENÈVE
           </p>
         </div>
 
@@ -201,22 +201,20 @@ export default function AuthModal() {
         <div className="flex border-b border-white/[0.06] bg-black/30">
           <button
             onClick={() => handleTabSwitch("login")}
-            className={`flex-1 py-3 text-xs font-mono tracking-wider uppercase transition-all flex items-center justify-center gap-2 cursor-pointer ${
-              authModalMode === "login"
+            className={`flex-1 py-3 text-xs font-mono tracking-wider uppercase transition-all flex items-center justify-center gap-2 cursor-pointer ${authModalMode === "login"
                 ? "text-[#d4af37] border-b-2 border-[#d4af37] bg-white/[0.02] font-semibold"
                 : "text-white/50 hover:text-white"
-            }`}
+              }`}
           >
             <FontAwesomeIcon icon={faShieldHalved} className="w-3.5 h-3.5" />
             <span>Đăng Nhập VIP</span>
           </button>
           <button
             onClick={() => handleTabSwitch("register")}
-            className={`flex-1 py-3 text-xs font-mono tracking-wider uppercase transition-all flex items-center justify-center gap-2 cursor-pointer ${
-              authModalMode === "register"
+            className={`flex-1 py-3 text-xs font-mono tracking-wider uppercase transition-all flex items-center justify-center gap-2 cursor-pointer ${authModalMode === "register"
                 ? "text-[#d4af37] border-b-2 border-[#d4af37] bg-white/[0.02] font-semibold"
                 : "text-white/50 hover:text-white"
-            }`}
+              }`}
           >
             <FontAwesomeIcon icon={faGem} className="w-3.5 h-3.5" />
             <span>Đăng Ký Hội Viên</span>

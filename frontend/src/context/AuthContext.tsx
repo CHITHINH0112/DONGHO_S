@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { WatchItem, WATCHES } from "@/data/watches";
+import { WatchItem, WatchVariant, WATCHES } from "@/data/watches";
 import { watchAudio } from "@/utils/audio";
 import apiClient from "@/lib/axios";
 
@@ -24,6 +24,7 @@ export interface UserOrder {
     watch: WatchItem;
     quantity: number;
     serialNumber: string;
+    variant?: WatchVariant;
   }[];
   totalVND: number;
   totalUSD: number;
@@ -62,10 +63,11 @@ interface AuthContextType {
   openGoogleOAuthPopup: () => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   updateProfile: (profile: Partial<UserProfile>) => void;
-  addAddress: (addr: Omit<UserAddress, "id">) => void;
-  updateAddress: (id: string, addr: Partial<UserAddress>) => void;
-  deleteAddress: (id: string) => void;
-  setDefaultAddress: (id: string) => void;
+  addAddress: (addr: Omit<UserAddress, "id">) => Promise<void> | void;
+  updateAddress: (id: string, addr: Partial<UserAddress>) => Promise<void> | void;
+  deleteAddress: (id: string) => Promise<void> | void;
+  setDefaultAddress: (id: string) => Promise<void> | void;
+  fetchUserAddresses: (userId?: string) => Promise<UserAddress[] | void>;
   createOrder: (order: {
     items: { watch: WatchItem; quantity: number }[];
     totalVND: number;
@@ -85,11 +87,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<"login" | "register">("login");
 
+  // Hàm tải danh sách địa chỉ từ CSDL MySQL của riêng tài khoản đó
+  const fetchUserAddresses = async (userId?: string) => {
+    try {
+      const res = await apiClient.get("/user-addresses");
+      const list = res.data?.data;
+      if (Array.isArray(list)) {
+        const mapped: UserAddress[] = list.map((item: any) => ({
+          id: String(item.id),
+          receiverName: item.receiverName || item.receiver_name || "",
+          phone: item.phone || "",
+          address: item.address || "",
+          city: item.address?.includes("Hà Nội") ? "Hà Nội" : "TP. Hồ Chí Minh",
+          isDefault: Boolean(item.isDefault ?? item.is_default),
+          tag: item.address?.includes("Công ty") || item.address?.includes("Tòa nhà") || item.address?.includes("Bitexco")
+            ? "Văn phòng VIP"
+            : item.address?.includes("Nhà riêng")
+            ? "Tư gia"
+            : "Dinh thự",
+        }));
+        setAddresses(mapped);
+        if (userId) {
+          try {
+            localStorage.setItem(`mdm_user_addresses_${userId}`, JSON.stringify(mapped));
+          } catch {}
+        }
+        return mapped;
+      }
+    } catch (err) {
+      console.warn("Chưa thể đồng bộ địa chỉ từ MySQL:", err);
+      if (userId) {
+        try {
+          const cached = localStorage.getItem(`mdm_user_addresses_${userId}`);
+          if (cached) {
+            setAddresses(JSON.parse(cached));
+            return JSON.parse(cached);
+          }
+        } catch {}
+      }
+      setAddresses([]);
+    }
+  };
+
   // Load from localStorage on mount & clean up legacy mock users
   useEffect(() => {
     try {
+      // Xóa bỏ key mdm_user_addresses dùng chung trước đây để loại bỏ việc lưu trùng địa chỉ
+      localStorage.removeItem("mdm_user_addresses");
+
       const savedToken = localStorage.getItem("customer_token");
       const savedUser = localStorage.getItem("mdm_auth_user");
+
       if (savedToken && savedUser) {
         const parsed = JSON.parse(savedUser);
         if (parsed.email === "alexander.vu@maison.ch" || parsed.id === "USR-VIP-8899") {
@@ -98,19 +146,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           localStorage.removeItem("mdm_auth_user");
           setUser(null);
           setToken(null);
+          setAddresses([]);
         } else {
           setToken(savedToken);
           setUser(parsed);
+          // Tải địa chỉ chính chủ từ MySQL theo token của người dùng hiện tại
+          fetchUserAddresses(parsed.id);
         }
       } else {
         setUser(null);
         setToken(null);
-      }
-
-      const savedAddresses = localStorage.getItem("mdm_user_addresses");
-      if (savedAddresses) {
-        setAddresses(JSON.parse(savedAddresses));
-      } else {
         setAddresses([]);
       }
 
@@ -123,6 +168,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch {
       setUser(null);
       setToken(null);
+      setAddresses([]);
     }
   }, []);
 
@@ -134,13 +180,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         localStorage.removeItem("mdm_auth_user");
       }
-    } catch {}
-  };
-
-  const saveAddresses = (list: UserAddress[]) => {
-    setAddresses(list);
-    try {
-      localStorage.setItem("mdm_user_addresses", JSON.stringify(list));
     } catch {}
   };
 
@@ -193,6 +232,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           spendingTotalVND: 0,
         };
         saveUser(loggedUser);
+
+        // Tải danh sách địa chỉ riêng của tài khoản này từ CSDL MySQL
+        await fetchUserAddresses(loggedUser.id);
+
         setIsAuthModalOpen(false);
         return { success: true };
       }
@@ -242,6 +285,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           spendingTotalVND: 0,
         };
         saveUser(newUser);
+
+        // Khởi tạo danh sách địa chỉ rỗng cho tài khoản mới
+        setAddresses([]);
+
         setIsAuthModalOpen(false);
         return { success: true };
       }
@@ -285,6 +332,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           spendingTotalVND: 0,
         };
         saveUser(loggedUser);
+
+        // Tải danh sách địa chỉ của tài khoản Google này từ MySQL
+        await fetchUserAddresses(loggedUser.id);
+
         setIsAuthModalOpen(false);
         return { success: true };
       }
@@ -383,8 +434,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       localStorage.removeItem("customer_token");
       localStorage.removeItem("customer_refresh_token");
+      localStorage.removeItem("mdm_auth_user");
+      localStorage.removeItem("mdm_user_addresses");
     } catch {}
     saveUser(null);
+    // RESET HOÀN TOÀN ĐỊA CHỈ VÀ ĐƠN HÀNG TRÁNH LƯU VẾT CHO TÀI KHOẢN SAU
+    setAddresses([]);
+    setOrders([]);
   };
 
   const updateProfile = (data: Partial<UserProfile>) => {
@@ -393,8 +449,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     saveUser(updated);
   };
 
-  const addAddress = (addr: Omit<UserAddress, "id">) => {
+  const addAddress = async (addr: Omit<UserAddress, "id">) => {
     watchAudio.click();
+    try {
+      const fullAddress = addr.city && !addr.address.includes(addr.city)
+        ? `${addr.address}, ${addr.city}`
+        : addr.address;
+
+      await apiClient.post("/user-addresses", {
+        receiverName: addr.receiverName,
+        phone: addr.phone,
+        address: fullAddress,
+        isDefault: addr.isDefault || addresses.length === 0,
+      });
+
+      if (user) {
+        await fetchUserAddresses(user.id);
+        return;
+      }
+    } catch (err: any) {
+      console.error("Lỗi gửi địa chỉ tới máy chủ:", err);
+    }
+
+    // Fallback nếu API ngoại lệ
     const newId = `ADDR-${Date.now()}`;
     let newAddresses: UserAddress[];
     if (addr.isDefault || addresses.length === 0) {
@@ -403,12 +480,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } else {
       newAddresses = [...addresses, { ...addr, id: newId }];
     }
-    saveAddresses(newAddresses);
+    setAddresses(newAddresses);
+    if (user) {
+      try {
+        localStorage.setItem(`mdm_user_addresses_${user.id}`, JSON.stringify(newAddresses));
+      } catch {}
+    }
   };
 
-  const updateAddress = (id: string, addr: Partial<UserAddress>) => {
+  const updateAddress = async (id: string, addr: Partial<UserAddress>) => {
     watchAudio.click();
-    let newAddresses = addresses.map((a) => {
+    try {
+      const numericId = !isNaN(Number(id)) ? Number(id) : null;
+      if (numericId) {
+        await apiClient.put(`/user-addresses/${numericId}`, {
+          receiverName: addr.receiverName,
+          phone: addr.phone,
+          address: addr.address,
+          isDefault: addr.isDefault,
+        });
+        if (user) {
+          await fetchUserAddresses(user.id);
+          return;
+        }
+      }
+    } catch (err: any) {
+      console.error("Lỗi cập nhật địa chỉ:", err);
+    }
+
+    // Fallback
+    const newAddresses = addresses.map((a) => {
       if (a.id === id) {
         return { ...a, ...addr };
       }
@@ -417,25 +518,70 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       return a;
     });
-    saveAddresses(newAddresses);
+    setAddresses(newAddresses);
+    if (user) {
+      try {
+        localStorage.setItem(`mdm_user_addresses_${user.id}`, JSON.stringify(newAddresses));
+      } catch {}
+    }
   };
 
-  const deleteAddress = (id: string) => {
+  const deleteAddress = async (id: string) => {
     watchAudio.tick();
+    try {
+      const numericId = !isNaN(Number(id)) ? Number(id) : null;
+      if (numericId) {
+        await apiClient.delete(`/user-addresses/${numericId}`);
+        if (user) {
+          await fetchUserAddresses(user.id);
+          return;
+        }
+      }
+    } catch (err: any) {
+      console.error("Lỗi xóa địa chỉ:", err);
+    }
+
+    // Fallback
     const filtered = addresses.filter((a) => a.id !== id);
     if (filtered.length > 0 && !filtered.some((a) => a.isDefault)) {
       filtered[0].isDefault = true;
     }
-    saveAddresses(filtered);
+    setAddresses(filtered);
+    if (user) {
+      try {
+        localStorage.setItem(`mdm_user_addresses_${user.id}`, JSON.stringify(filtered));
+      } catch {}
+    }
   };
 
-  const setDefaultAddress = (id: string) => {
+  const setDefaultAddress = async (id: string) => {
     watchAudio.click();
+    try {
+      const numericId = !isNaN(Number(id)) ? Number(id) : null;
+      if (numericId) {
+        await apiClient.put(`/user-addresses/${numericId}`, {
+          isDefault: true,
+        });
+        if (user) {
+          await fetchUserAddresses(user.id);
+          return;
+        }
+      }
+    } catch (err: any) {
+      console.error("Lỗi đặt địa chỉ mặc định:", err);
+    }
+
+    // Fallback
     const newAddresses = addresses.map((a) => ({
       ...a,
       isDefault: a.id === id,
     }));
-    saveAddresses(newAddresses);
+    setAddresses(newAddresses);
+    if (user) {
+      try {
+        localStorage.setItem(`mdm_user_addresses_${user.id}`, JSON.stringify(newAddresses));
+      } catch {}
+    }
   };
 
   const createOrder = (orderData: {
@@ -507,6 +653,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updateAddress,
         deleteAddress,
         setDefaultAddress,
+        fetchUserAddresses,
         createOrder,
       }}
     >

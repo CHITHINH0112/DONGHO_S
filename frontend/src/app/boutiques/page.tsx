@@ -54,7 +54,7 @@ export default function BoutiquesPage() {
             <div className="relative w-full h-64 bg-black/60 overflow-hidden">
               <Image
                 src="https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=1200&q=80"
-                alt="Maison Des Montres Flagship Tràng Tiền"
+                alt="BRU_WATCH Flagship Tràng Tiền"
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-700 opacity-90"
               />
@@ -123,7 +123,7 @@ export default function BoutiquesPage() {
             <div className="relative w-full h-64 bg-black/60 overflow-hidden">
               <Image
                 src="https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=1200&q=80"
-                alt="Maison Des Montres Grand Salon Đồng Khởi"
+                alt="BRU_WATCH Grand Salon Đồng Khởi"
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-700 opacity-90"
               />

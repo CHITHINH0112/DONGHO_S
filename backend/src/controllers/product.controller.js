@@ -81,6 +81,39 @@ export const addProductVariant = asyncHandler(async (req, res) => {
   });
 });
 
+export const updateProductVariant = asyncHandler(async (req, res) => {
+  const variantId = req.params.variantId || req.params.id;
+  const updatedVariant = await productService.updateVariant(variantId, req.body);
+
+  if (!updatedVariant) {
+    return errorResponse(res, {
+      statusCode: 404,
+      message: `Không tìm thấy biến thể ID '${variantId}' để cập nhật`,
+    });
+  }
+
+  return successResponse(res, {
+    message: 'Cập nhật biến thể sản phẩm thành công',
+    data: updatedVariant,
+  });
+});
+
+export const deleteProductVariant = asyncHandler(async (req, res) => {
+  const variantId = req.params.variantId || req.params.id;
+  const success = await productService.deleteVariant(variantId);
+
+  if (!success) {
+    return errorResponse(res, {
+      statusCode: 404,
+      message: `Không tìm thấy biến thể ID '${variantId}' để xóa`,
+    });
+  }
+
+  return successResponse(res, {
+    message: 'Xóa biến thể sản phẩm thành công',
+  });
+});
+
 export default {
   getProducts,
   getProductDetail,
@@ -88,4 +121,6 @@ export default {
   updateProduct,
   deleteProduct,
   addProductVariant,
+  updateProductVariant,
+  deleteProductVariant,
 };

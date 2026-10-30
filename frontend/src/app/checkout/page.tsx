@@ -94,7 +94,7 @@ export default function CheckoutPage() {
     }
 
     const newOrder = createOrder({
-      items: cart.map((c) => ({ watch: c.watch, quantity: c.quantity })),
+      items: cart.map((c) => ({ watch: c.watch, quantity: c.quantity, variant: c.selectedVariant })),
       totalVND: finalSubtotalVND,
       totalUSD: finalSubtotalUSD,
       paymentMethod,
@@ -132,7 +132,7 @@ export default function CheckoutPage() {
       {/* Top Banner */}
       <div className="text-center max-w-2xl mx-auto mb-10">
         <span className="text-[10px] font-mono tracking-[0.3em] uppercase text-[#d4af37] block">
-          HAUTE HORLOGERIE • PRIVATE CONCIERGE
+          BRU_WATCH • PRIVATE CONCIERGE
         </span>
         <h1 className="font-serif text-2xl sm:text-4xl font-normal text-foreground mt-1">
           Thủ Tục Bàn Giao & Thanh Toán VIP
@@ -275,7 +275,7 @@ export default function CheckoutPage() {
                         {addr.phone}
                       </p>
                     </label>
-                  ))}
+              ))}
 
                   <label
                     onClick={() => {
@@ -364,7 +364,7 @@ export default function CheckoutPage() {
                   <div className="p-4 rounded-2xl bg-muted/40 border border-border text-xs text-foreground space-y-1">
                     <span className="font-semibold text-[#d4af37]">Địa Điểm Tiếp Đón VIP Salon:</span>
                     <p className="text-muted-foreground leading-relaxed">
-                      Maison Des Montres Flagship Boutique - Số 15 Tràng Tiền, Hoàn Kiếm, Hà Nội hoặc 68 Đồng Khởi, Quận 1, TP. Hồ Chí Minh. Đội ngũ Concierge sẽ liên hệ đặt lịch trước với Quý khách.
+                      BRU_WATCH Flagship Boutique - Số 15 Tràng Tiền, Hoàn Kiếm, Hà Nội hoặc 68 Đồng Khởi, Quận 1, TP. Hồ Chí Minh. Đội ngũ Concierge sẽ liên hệ đặt lịch trước với Quý khách.
                     </p>
                   </div>
                 )}
@@ -423,6 +423,8 @@ export default function CheckoutPage() {
                     <h5 className="font-serif text-sm font-medium text-foreground">
                       Chuyển Khoản Ngân Hàng Tự Động (VietQR 24/7)
                     </h5>
+
+
                     <p className="text-xs text-muted-foreground font-light">
                       Quét mã QR Napas sinh tự động, đối soát ngay lập tức 0 giây.
                     </p>
@@ -459,6 +461,8 @@ export default function CheckoutPage() {
                     <h5 className="font-serif text-sm font-medium text-foreground">
                       Thanh Toán Khi Tiếp Nhận Bàn Giao Xe Bọc Thép
                     </h5>
+
+
                     <p className="text-xs text-muted-foreground font-light">
                       Kiểm định cỗ máy thực tế trên tay trước khi quyết định ký nhận.
                     </p>
@@ -495,6 +499,8 @@ export default function CheckoutPage() {
                     <h5 className="font-serif text-sm font-medium text-foreground">
                       Thẻ Tín Dụng Quốc Tế (Visa Infinite, AmEx Centurion)
                     </h5>
+
+
                     <p className="text-xs text-muted-foreground font-light">
                       Cổng thanh toán mã hóa 3D Secure 2.0 an toàn tuyệt đối.
                     </p>
@@ -526,16 +532,30 @@ export default function CheckoutPage() {
 
             {/* Cart Items list */}
             <div className="space-y-4 max-h-72 overflow-y-auto pr-1">
-              {cart.map(({ watch, quantity }) => (
+              {cart.map((entry) => {
+                const { watch, quantity, selectedVariant } = entry;
+                const entryKey = entry.id || (selectedVariant ? `${watch.id}-${selectedVariant.id}` : watch.id);
+                const itemImg = selectedVariant?.images?.[0] || watch.image;
+                const itemVND = selectedVariant ? selectedVariant.priceVND : watch.priceVND;
+                const itemUSD = selectedVariant ? selectedVariant.priceUSD : watch.priceUSD;
+
+                return (
                 <div
-                  key={watch.id}
+                  key={entryKey}
                   className="flex items-center gap-3.5 p-3 rounded-2xl bg-muted/30 border border-border/80"
                 >
                   <div className="relative w-14 h-14 rounded-xl bg-black/40 border border-border overflow-hidden shrink-0">
                     <Image
-                      src={watch.image}
+                      src={itemImg}
                       alt={watch.name}
                       fill
+                      unoptimized
+                      onError={(e) => {
+                        const target = e.currentTarget as HTMLImageElement;
+                        if (!target.src.includes('submariner-emerald.jpg')) {
+                          target.src = '/images/submariner-emerald.jpg';
+                        }
+                      }}
                       className="object-contain p-1"
                     />
                   </div>
@@ -546,15 +566,25 @@ export default function CheckoutPage() {
                     <h5 className="font-serif text-xs font-normal text-foreground truncate">
                       {watch.name}
                     </h5>
+
+                    {selectedVariant && (
+                      <div className="text-[10px] font-mono text-[#d4af37] truncate mt-0.5">
+                        {selectedVariant.mauMatSo} • SKU: {selectedVariant.sku}
+                      </div>
+                    )}
+
+
+
                     <div className="flex items-center justify-between text-xs font-mono mt-1">
                       <span className="text-muted-foreground">SL: {quantity}</span>
                       <span className="font-semibold text-foreground">
-                        {formatPrice(watch.priceUSD * quantity, watch.priceVND * quantity)}
+                        {formatPrice(itemUSD * quantity, itemVND * quantity)}
                       </span>
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Voucher input form */}

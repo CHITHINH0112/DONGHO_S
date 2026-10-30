@@ -102,14 +102,14 @@ export default function Header() {
             className="flex items-center gap-2.5 cursor-pointer group shrink-0"
           >
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#d4af37] to-[#8c6a21] flex items-center justify-center text-black font-serif font-bold text-xs shadow-md group-hover:scale-105 transition-transform">
-              M
+              B
             </div>
             <div className="flex flex-col">
               <span className="font-serif font-medium tracking-[0.16em] text-sm sm:text-base text-foreground group-hover:text-[#d4af37] transition-colors leading-none">
-                MAISON DES MONTRES
+                BRU_WATCH
               </span>
               <span className="text-[7px] font-mono tracking-[0.25em] uppercase text-muted-foreground mt-0.5">
-                HAUTE HORLOGERIE • GENÈVE
+                BRU_WATCH • GENÈVE
               </span>
             </div>
           </Link>
@@ -397,7 +397,7 @@ export default function Header() {
               onClick={() => setMobileMenuOpen(false)}
               className="text-left font-serif text-xl font-normal hover:text-[#d4af37]"
             >
-              Dịch Vụ Sửa Chữa Haute Horlogerie
+              Dịch Vụ Sửa Chữa BRU_WATCH
             </Link>
 
             <Link

@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { WATCHES, WatchItem } from "@/data/watches";
+import { WATCHES, WatchItem, WatchVariant } from "@/data/watches";
 import { useCart } from "@/context/CartContext";
 import { watchAudio } from "@/utils/audio";
 import RolexCrown from "@/components/RolexCrown";
@@ -19,6 +19,7 @@ import {
   faTruck,
   faAward,
   faGem,
+  faRing,
   faMinus,
   faPlus,
   faCheck,
@@ -34,6 +35,14 @@ import {
   faWineGlass,
   faCompass,
   faBolt,
+  faLayerGroup,
+  faCheckDouble,
+  faCircleInfo,
+  faListUl,
+  faGear,
+  faTag,
+  faDroplet,
+  faSliders,
 } from "@fortawesome/free-solid-svg-icons";
 import { faHeart as faHeartRegular } from "@fortawesome/free-regular-svg-icons";
 
@@ -53,6 +62,10 @@ export default function ProductDetailView({ watch }: ProductDetailViewProps) {
   } = useCart();
 
   const [quantity, setQuantity] = useState(1);
+  const variants = useMemo(() => watch.variants || [], [watch]);
+  const [selectedVariant, setSelectedVariant] = useState<WatchVariant | null>(
+    variants.length > 0 ? variants[0] : null
+  );
   const [activeImage, setActiveImage] = useState(watch.image);
   const [isCopied, setIsCopied] = useState(false);
   const [isZooming, setIsZooming] = useState(false);
@@ -60,11 +73,45 @@ export default function ProductDetailView({ watch }: ProductDetailViewProps) {
   const [showStickyBar, setShowStickyBar] = useState(false);
 
   // Gallery array
+  // Đồng bộ phiên bản và ảnh khi thay đổi sản phẩm
+  useEffect(() => {
+    if (watch.variants && watch.variants.length > 0) {
+      setSelectedVariant(watch.variants[0]);
+      setActiveImage(watch.variants[0].images?.[0] || watch.image);
+    } else {
+      setSelectedVariant(null);
+      setActiveImage(watch.image);
+    }
+  }, [watch?.id]);
+
+  // Các giá trị đồng bộ theo biến thể đang chọn
+  const currentPriceVND = selectedVariant ? selectedVariant.priceVND : watch.priceVND;
+  const currentPriceUSD = selectedVariant ? selectedVariant.priceUSD : watch.priceUSD;
+  const currentSku = selectedVariant ? selectedVariant.sku : `BRU-${watch.id}`;
+  const currentStrap = watch.specs.strap;
+  const currentDial = selectedVariant?.mauMatSo || 'Mặt Số Cổ Điển';
+  const currentStock = selectedVariant ? selectedVariant.stockCount : 5;
+
+  const handleSelectVariant = (v: WatchVariant) => {
+    watchAudio.tick();
+    setSelectedVariant(v);
+    if (v.images && v.images.length > 0) {
+      setActiveImage(v.images[0]);
+    }
+  };
+
   const gallery = useMemo(() => {
-    return watch.gallery && watch.gallery.length > 0
-      ? watch.gallery
-      : [watch.image];
-  }, [watch]);
+    if (selectedVariant && Array.isArray(selectedVariant.images) && selectedVariant.images.length > 0) {
+      const set = new Set([...selectedVariant.images]);
+      if (watch.image) set.add(watch.image);
+      return Array.from(set);
+    }
+    const combined = [
+      watch.image,
+      ...(watch.gallery || []),
+    ].filter(Boolean);
+    return Array.from(new Set(combined));
+  }, [watch, selectedVariant]);
 
   const isFavorited = isInWishlist(watch.id);
   const isCompared = compareList.some((w) => w.id === watch.id);
@@ -72,7 +119,7 @@ export default function ProductDetailView({ watch }: ProductDetailViewProps) {
   // Related watches from other models
   const relatedWatches = useMemo(() => {
     return WATCHES.filter((w) => w.id !== watch.id).slice(0, 3);
-  }, [watch]);
+  }, [watch, selectedVariant]);
 
   // Handle sticky action bar on scroll
   useEffect(() => {
@@ -84,7 +131,7 @@ export default function ProductDetailView({ watch }: ProductDetailViewProps) {
   }, []);
 
   const handleAddToCart = () => {
-    addToCart(watch, quantity);
+    addToCart(watch, quantity, selectedVariant);
   };
 
   const handleShare = () => {
@@ -147,15 +194,21 @@ export default function ProductDetailView({ watch }: ProductDetailViewProps) {
 
               {/* Regular Image */}
               <div
-                className={`relative w-full h-full transition-transform duration-300 ${
-                  isZooming ? "opacity-0" : "opacity-100"
-                }`}
+                className={`relative w-full h-full transition-transform duration-300 ${isZooming ? "opacity-0" : "opacity-100"
+                  }`}
               >
                 <Image
                   src={activeImage}
                   alt={watch.name}
                   fill
                   priority
+                  unoptimized
+                  onError={(e) => {
+                    const target = e.currentTarget as HTMLImageElement;
+                    if (!target.src.includes('submariner-emerald.jpg')) {
+                      target.src = '/images/submariner-emerald.jpg';
+                    }
+                  }}
                   sizes="(max-width: 768px) 100vw, 50vw"
                   className="object-contain drop-shadow-[0_25px_35px_rgba(0,0,0,0.85)]"
                 />
@@ -204,29 +257,49 @@ export default function ProductDetailView({ watch }: ProductDetailViewProps) {
             </div>
 
             {/* Gallery Thumbnails */}
-            {gallery.length > 1 && (
-              <div className="flex items-center gap-3 overflow-x-auto pb-2">
-                {gallery.map((img, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => {
-                      watchAudio.tick();
-                      setActiveImage(img);
-                    }}
-                    className={`relative w-22 h-22 rounded-2xl bg-card overflow-hidden border p-1 transition-all cursor-pointer shrink-0 ${
-                      activeImage === img
-                        ? "border-[#d4af37] ring-2 ring-[#d4af37]/40 scale-105"
+            {gallery.length > 0 && (
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between text-xs font-mono text-muted-foreground">
+                  <span className="uppercase tracking-wider text-[11px] text-[#d4af37] font-semibold flex items-center gap-1.5">
+                    <span>Bộ Sưu Tập Góc Chụp</span>
+                    <span className="px-2 py-0.5 rounded-full bg-[#d4af37]/15 text-[#d4af37] text-[10px]">
+                      {gallery.length} ảnh
+                    </span>
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-light">
+                    Nhấp vào ảnh để soi chi tiết
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 overflow-x-auto pb-2">
+                  {gallery.map((img, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        watchAudio.tick();
+                        setActiveImage(img);
+                      }}
+                      className={`relative w-22 h-22 rounded-2xl bg-card overflow-hidden border p-1 transition-all cursor-pointer shrink-0 ${activeImage === img
+                        ? "border-[#d4af37] ring-2 ring-[#d4af37]/40 scale-105 shadow-md"
                         : "border-border hover:border-[#d4af37]/50 opacity-70 hover:opacity-100"
-                    }`}
-                  >
-                    <Image
-                      src={img}
-                      alt={`${watch.name} góc ${idx + 1}`}
-                      fill
-                      className="object-contain"
-                    />
-                  </button>
-                ))}
+                        }`}
+                    >
+                      <Image
+                        src={img}
+                        alt={`${watch.name} góc ${idx + 1}`}
+                        fill
+                        unoptimized
+                        onError={(e) => {
+                          const target = e.currentTarget as HTMLImageElement;
+                          if (!target.src.includes('submariner-emerald.jpg')) {
+                            target.src = '/images/submariner-emerald.jpg';
+                          }
+                        }}
+                        className="object-contain p-1"
+                      />
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -258,18 +331,92 @@ export default function ProductDetailView({ watch }: ProductDetailViewProps) {
                   GIÁ NIÊM YẾT CHÍNH THỨC TOÀN CẦU
                 </span>
                 <div className="font-serif text-3xl sm:text-4xl font-normal text-[#d4af37]">
-                  {formatPrice(watch.priceUSD, watch.priceVND)}
+                  {formatPrice(currentPriceUSD, currentPriceVND)}
                 </div>
               </div>
               <div className="text-right text-xs font-mono text-muted-foreground">
-                <span className="text-emerald-500 dark:text-emerald-400 flex items-center sm:justify-end gap-1 font-semibold">
-                  <FontAwesomeIcon icon={faCircleCheck} className="w-3.5 h-3.5" /> Sẵn Sàng Bàn Giao Ngay
-                </span>
+                {currentStock > 0 ? (
+                  <span className="text-emerald-500 dark:text-emerald-400 flex items-center sm:justify-end gap-1.5 font-semibold">
+                    <FontAwesomeIcon icon={faCircleCheck} className="w-3.5 h-3.5" /> Sẵn Sàng Bàn Giao ({currentStock} chiếc)
+                  </span>
+                ) : (
+                  <span className="text-amber-500 dark:text-amber-400 flex items-center sm:justify-end gap-1.5 font-semibold">
+                    <FontAwesomeIcon icon={faClock} className="w-3.5 h-3.5" /> Chế Tác Theo Đơn Đặt Hàng
+                  </span>
+                )}
                 <span className="text-[11px] block mt-0.5">
-                  Đã bao gồm thuế hải quan & bảo hiểm chuyên dụng
+                  Mã SKU: <span className="text-foreground font-semibold">{currentSku}</span>
                 </span>
               </div>
             </div>
+
+            {/* Phiên Bản Chế Tác (Variants Selector) */}
+            {variants.length > 0 && (
+              <div className="space-y-3 p-5 rounded-3xl bg-black/[0.02] dark:bg-white/[0.02] border border-[#d4af37]/25 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono uppercase tracking-[0.2em] text-[#d4af37] font-semibold flex items-center gap-2">
+                    <FontAwesomeIcon icon={faLayerGroup} className="w-3.5 h-3.5" />
+                    <span>Phiên Bản Chế Tác ({variants.length} Tùy Chọn)</span>
+                  </span>
+                  {selectedVariant && (
+                    <span className="text-[11px] font-mono text-muted-foreground">
+                      Đã chọn: <span className="text-[#d4af37] font-semibold">{selectedVariant.mauMatSo}</span>
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {variants.map((v) => {
+                    const isSelected = selectedVariant?.id === v.id;
+                    return (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => handleSelectVariant(v)}
+                        className={`relative p-3.5 rounded-2xl border text-left transition-all duration-300 flex items-center gap-3.5 cursor-pointer ${isSelected
+                          ? "bg-[#d4af37]/15 border-[#d4af37] ring-1 ring-[#d4af37]/40 shadow-md"
+                          : "bg-card/70 border-border/80 hover:border-[#d4af37]/50 hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
+                          }`}
+                      >
+                        <div className="relative w-12 h-12 rounded-xl bg-black/40 border border-white/[0.08] overflow-hidden shrink-0">
+                          <Image
+                            src={v.images?.[0] || watch.image}
+                            alt={v.mauMatSo || watch.name}
+                            fill
+                            unoptimized
+                            onError={(e) => {
+                              const target = e.currentTarget as HTMLImageElement;
+                              if (!target.src.includes('submariner-emerald.jpg')) {
+                                target.src = '/images/submariner-emerald.jpg';
+                              }
+                            }}
+                            className="object-contain p-1"
+                          />
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <h4 className="font-serif text-xs font-semibold text-foreground truncate">
+                              {v.mauMatSo || 'Mặt Số Cổ Điển'}
+                            </h4>
+                            {isSelected && (
+                              <FontAwesomeIcon icon={faCheck} className="w-3.5 h-3.5 text-[#d4af37] shrink-0" />
+                            )}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground truncate font-sans">
+                            {v.sku}
+                          </p>
+                          <div className="text-xs font-mono font-bold text-[#d4af37] mt-0.5">
+                            {formatPrice(v.priceUSD, v.priceVND)}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
 
             {/* Description */}
             <p className="text-xs sm:text-sm text-muted-foreground font-light leading-relaxed font-sans">
@@ -284,6 +431,83 @@ export default function ProductDetailView({ watch }: ProductDetailViewProps) {
                   <span>{h}</span>
                 </div>
               ))}
+            </div>
+
+
+            {/* Bảng Tóm Tắt Thông Số Cốt Lõi (Quick Specs Table) */}
+            <div className="rounded-2xl bg-black/[0.02] dark:bg-[#070e0a]/80 border border-[#d4af37]/25 overflow-hidden shadow-sm">
+              <div className="px-4 py-2.5 bg-black/[0.04] dark:bg-white/[0.02] border-b border-[#d4af37]/20 flex items-center justify-between">
+                <span className="text-xs font-mono uppercase tracking-wider text-[#d4af37] font-semibold flex items-center gap-2">
+                  <FontAwesomeIcon icon={faSliders} className="w-3.5 h-3.5 text-[#d4af37]" />
+                  <span>Bảng Thông Số Kỹ Thuật Nhanh</span>
+                </span>
+                <a
+                  href="#full-specifications-table"
+                  className="text-[11px] font-mono text-muted-foreground hover:text-[#d4af37] transition-colors flex items-center gap-1 group"
+                >
+                  <span>Xem hồ sơ đầy đủ</span>
+                  <FontAwesomeIcon icon={faChevronRight} className="text-[9px] group-hover:translate-x-0.5 transition-transform" />
+                </a>
+              </div>
+              <div className="divide-y divide-white/[0.05] text-xs font-mono">
+                <div className="flex items-center justify-between py-2 px-3.5 hover:bg-white/[0.02] transition-colors">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <FontAwesomeIcon icon={faTag} className="w-3 h-3 text-[#d4af37]/70" />
+                    <span>Mã SKU / Phiên bản</span>
+                  </span>
+                  <span className="text-foreground font-semibold">{currentSku}</span>
+                </div>
+                <div className="flex items-center justify-between py-2 px-3.5 hover:bg-white/[0.02] transition-colors">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <FontAwesomeIcon icon={faCompass} className="w-3 h-3 text-[#d4af37]/70" />
+                    <span>Đường kính & Bề dày</span>
+                  </span>
+                  <span className="text-foreground font-semibold">{watch.specs.diameter} • Dày {watch.specs.thickness}</span>
+                </div>
+                <div className="flex items-center justify-between py-2 px-3.5 hover:bg-white/[0.02] transition-colors">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <FontAwesomeIcon icon={faGem} className="w-3 h-3 text-[#d4af37]/70" />
+                    <span>Chất Liệu Mặt Kính</span>
+                  </span>
+                  <span className="text-foreground font-semibold truncate max-w-[210px] text-right">{watch.specs.crystal}</span>
+                </div>
+                <div className="flex items-center justify-between py-2 px-3.5 hover:bg-white/[0.02] transition-colors">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <FontAwesomeIcon icon={faRing} className="w-3 h-3 text-[#d4af37]/70" />
+                    <span>Chất Liệu Niềng (Bezel)</span>
+                  </span>
+                  <span className="text-foreground font-semibold truncate max-w-[210px] text-right">{watch.specs.bezel}</span>
+                </div>
+                <div className="flex items-center justify-between py-2 px-3.5 hover:bg-white/[0.02] transition-colors">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <FontAwesomeIcon icon={faFingerprint} className="w-3 h-3 text-[#d4af37]/70" />
+                    <span>Chất Liệu Dây Đeo</span>
+                  </span>
+                  <span className="text-foreground font-semibold truncate max-w-[210px] text-right">{currentStrap}</span>
+
+                </div>
+                <div className="flex items-center justify-between py-2 px-3.5 hover:bg-white/[0.02] transition-colors">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <FontAwesomeIcon icon={faClock} className="w-3 h-3 text-[#d4af37]/70" />
+                    <span>Cỗ Máy Vi Cơ Khí</span>
+                  </span>
+                  <span className="text-foreground font-semibold truncate max-w-[210px] text-right">{watch.specs.movement}</span>
+                </div>
+                <div className="flex items-center justify-between py-2 px-3.5 hover:bg-white/[0.02] transition-colors">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <FontAwesomeIcon icon={faDroplet} className="w-3 h-3 text-[#d4af37]/70" />
+                    <span>Khả Năng Chống Nước</span>
+                  </span>
+                  <span className="text-foreground font-semibold">{watch.specs.waterResistance}</span>
+                </div>
+                <div className="flex items-center justify-between py-2 px-3.5 hover:bg-white/[0.02] transition-colors">
+                  <span className="text-muted-foreground flex items-center gap-2">
+                    <FontAwesomeIcon icon={faShieldHalved} className="w-3 h-3 text-emerald-400" />
+                    <span>Bảo Hành Toàn Cầu</span>
+                  </span>
+                  <span className="text-emerald-400 font-semibold">{watch.warrantyMonths ? watch.warrantyMonths + ' Tháng' : "24 Tháng"} Chính Hãng</span>
+                </div>
+              </div>
             </div>
 
             {/* Actions & Quantity */}
@@ -334,20 +558,18 @@ export default function ProductDetailView({ watch }: ProductDetailViewProps) {
                 >
                   <FontAwesomeIcon
                     icon={isFavorited ? faHeart : faHeartRegular}
-                    className={`w-4 h-4 ${
-                      isFavorited ? "text-rose-500" : "text-muted-foreground"
-                    }`}
+                    className={`w-4 h-4 ${isFavorited ? "text-rose-500" : "text-muted-foreground"
+                      }`}
                   />
                 </button>
 
                 {/* Compare Button */}
                 <button
                   onClick={() => toggleCompare(watch)}
-                  className={`w-12 h-12 rounded-2xl border flex items-center justify-center transition-all cursor-pointer shrink-0 ${
-                    isCompared
-                      ? "bg-[#d4af37] text-black border-[#d4af37]"
-                      : "border-[#d4af37]/30 text-muted-foreground hover:text-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
-                  }`}
+                  className={`w-12 h-12 rounded-2xl border flex items-center justify-center transition-all cursor-pointer shrink-0 ${isCompared
+                    ? "bg-[#d4af37] text-black border-[#d4af37]"
+                    : "border-[#d4af37]/30 text-muted-foreground hover:text-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
+                    }`}
                   title="So sánh kỹ thuật"
                   aria-label="So sánh"
                 >
@@ -372,7 +594,7 @@ export default function ProductDetailView({ watch }: ProductDetailViewProps) {
             <div className="grid grid-cols-3 gap-3 pt-4 border-t border-border text-center text-xs font-mono text-muted-foreground">
               <div className="p-3.5 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-border">
                 <FontAwesomeIcon icon={faShieldHalved} className="w-4 h-4 text-emerald-500 mx-auto mb-1.5 block" />
-                <span className="text-[11px] block text-foreground font-medium">Bảo Hành 5 Năm</span>
+                <span className="text-[11px] block text-foreground font-medium">Bảo Hành {watch.warrantyMonths ? `${watch.warrantyMonths} Tháng` : "5 Năm"}</span>
                 <span className="text-[9px] text-muted-foreground">Chứng chỉ quốc tế</span>
               </div>
               <div className="p-3.5 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-border">
@@ -390,91 +612,243 @@ export default function ProductDetailView({ watch }: ProductDetailViewProps) {
         </div>
       </section>
 
-      {/* Section 1: The Horological Engine Anatomy */}
-      <section className="py-20 bg-secondary/50 border-t border-b border-[#d4af37]/20 relative overflow-hidden">
+
+      {/* Section 1: Comprehensive Specifications Sheet (Bảng Quy Chuẩn Thông Số Kỹ Thuật Toàn Diện) */}
+      <section id="full-specifications-table" className="py-20 bg-secondary/50 border-t border-b border-[#d4af37]/20 relative overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 sm:px-12 relative z-10">
-          <div className="max-w-3xl mx-auto text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/[0.03] dark:bg-white/[0.03] border border-[#d4af37]/35 text-[#d4af37] text-xs font-mono uppercase tracking-[0.2em] mb-4">
-              <FontAwesomeIcon icon={faClock} className="w-3.5 h-3.5" />
-              <span>Trái Tim Vi Cơ Khí In-House</span>
+          <div className="max-w-3xl mx-auto text-center mb-14">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-black/[0.03] dark:bg-white/[0.03] border border-[#d4af37]/35 text-[#d4af37] text-xs font-mono uppercase tracking-[0.2em] mb-4 shadow-sm">
+              <FontAwesomeIcon icon={faSliders} className="w-3.5 h-3.5 text-[#d4af37]" />
+              <span>Hồ Sơ Quy Chuẩn Chế Tác</span>
             </div>
             <h2 className="font-serif text-3xl sm:text-4xl font-normal text-foreground">
-              Giải Phẫu Cỗ Máy Calibre <span className="text-[#d4af37] italic">{watch.specs.calibre}</span>
+              Bảng Thông Số Kỹ Thuật Toàn Diện <span className="text-[#d4af37] italic">{watch.name}</span>
             </h2>
             <p className="mt-3 text-xs sm:text-sm text-muted-foreground font-light leading-relaxed font-sans max-w-2xl mx-auto">
-              Được chế tác hoàn toàn in-house tại các xưởng đồng hồ bí truyền Thụy Sĩ. Mỗi cỗ máy mất hơn 9 tháng lắp ráp thủ công với sai số đo lường vượt xa các tiêu chuẩn khắt khe nhất của viện kiểm định COSC.
+              Tất cả kích thước hình học, vật liệu kim loại quý, cỗ máy vi cơ khí và tiêu chuẩn hoàn thiện thủ công được chuẩn hóa thành bảng thông số chi tiết dưới đây.
             </p>
           </div>
 
-          {/* Specs Matrix */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 font-mono text-xs">
-            <div className="p-5 rounded-3xl bg-card border border-[#d4af37]/25 shadow-sm">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider block mb-1">
-                Đường Kính Thân Vỏ
-              </span>
-              <span className="text-base font-bold text-foreground">{watch.specs.diameter}</span>
+          {/* Master 4-Quadrant Specifications Table */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* BẢNG 1: THÂN VỎ, KÍNH & HÌNH HỌC */}
+            <div className="rounded-3xl bg-card border border-[#d4af37]/25 shadow-lg overflow-hidden flex flex-col justify-between">
+              <div>
+                <div className="px-6 py-4 bg-black/[0.03] dark:bg-white/[0.02] border-b border-[#d4af37]/20 flex items-center justify-between">
+                  <h3 className="font-serif text-base font-semibold text-foreground flex items-center gap-2.5">
+                    <FontAwesomeIcon icon={faCompass} className="w-4 h-4 text-[#d4af37]" />
+                    <span>Thân Vỏ, Mặt Kính, Vành Niềng & Kích Thước</span>
+                  </h3>
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-[#d4af37] px-2 py-0.5 rounded bg-[#d4af37]/10 border border-[#d4af37]/20">
+                    Hình Học & Kim Loại
+                  </span>
+                </div>
+                <div className="divide-y divide-white/[0.04] text-xs font-mono">
+                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
+                    <span className="text-muted-foreground font-sans">Đường kính mặt số (Diameter)</span>
+                    <span className="text-foreground font-bold">{watch.specs.diameter}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
+                    <span className="text-muted-foreground font-sans">Bề dày thân vỏ (Thickness)</span>
+                    <span className="text-foreground font-bold">{watch.specs.thickness}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
+                    <span className="text-muted-foreground font-sans">Chất liệu thân vỏ (Case Material)</span>
+                    <span className="text-foreground font-semibold text-right max-w-[260px] truncate">{watch.specs.caseMaterial}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
+                    <span className="text-muted-foreground font-sans">Chất liệu Niềng (Bezel)</span>
+                    <span className="text-foreground font-semibold text-right max-w-[260px] truncate">{watch.specs.bezel}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
+                    <span className="text-muted-foreground font-sans">Chất liệu Mặt kính (Crystal)</span>
+                    <span className="text-foreground font-semibold text-right max-w-[260px] truncate">{watch.specs.crystal}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
+                    <span className="text-muted-foreground font-sans">Độ chịu áp suất nước</span>
+                    <span className="text-emerald-400 font-bold">{watch.specs.waterResistance}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
+                    <span className="text-muted-foreground font-sans">Kiểu dáng & Đối tượng</span>
+                    <span className="text-foreground font-semibold">
+                      {watch.gender === 'male' ? 'Đồng hồ Nam' : watch.gender === 'female' ? 'Đồng hồ Nữ' : 'Unisex (Nam & Nữ)'}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="p-5 rounded-3xl bg-card border border-[#d4af37]/25 shadow-sm">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider block mb-1">
-                Độ Dày Cỗ Máy
-              </span>
-              <span className="text-base font-bold text-foreground">{watch.specs.thickness}</span>
+            {/* BẢNG 2: TRÁI TIM CỖ MÁY VI CƠ KHÍ */}
+            <div className="rounded-3xl bg-card border border-[#d4af37]/25 shadow-lg overflow-hidden flex flex-col justify-between">
+              <div>
+                <div className="px-6 py-4 bg-black/[0.03] dark:bg-white/[0.02] border-b border-[#d4af37]/20 flex items-center justify-between">
+                  <h3 className="font-serif text-base font-semibold text-foreground flex items-center gap-2.5">
+                    <FontAwesomeIcon icon={faClock} className="w-4 h-4 text-[#d4af37]" />
+                    <span>Trái Tim Cỗ Máy Vi Cơ Khí</span>
+                  </h3>
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-[#d4af37] px-2 py-0.5 rounded bg-[#d4af37]/10 border border-[#d4af37]/20">
+                    In-House Calibre
+                  </span>
+                </div>
+                <div className="divide-y divide-white/[0.04] text-xs font-mono">
+                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
+                    <span className="text-muted-foreground font-sans">Loại chuyển động (Movement)</span>
+                    <span className="text-foreground font-bold">{watch.specs.movement}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
+                    <span className="text-muted-foreground font-sans">Mã định danh Calibre</span>
+                    <span className="text-[#d4af37] font-bold">{watch.specs.calibre}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
+                    <span className="text-muted-foreground font-sans">Thời lượng trữ cót (Power Reserve)</span>
+                    <span className="text-[#d4af37] font-bold">{watch.specs.powerReserve}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
+                    <span className="text-muted-foreground font-sans">Tần số dao động (Frequency)</span>
+                    <span className="text-foreground font-bold">{watch.specs.frequency}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
+                    <span className="text-muted-foreground font-sans">Số chân kính Ruby (Jewels)</span>
+                    <span className="text-foreground font-bold">{watch.specs.jewels}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
+                    <span className="text-muted-foreground font-sans">Kỹ nghệ hoàn thiện cỗ máy</span>
+                    <span className="text-foreground font-semibold text-right">Vát mép Anglage 45° & Côtes de Genève</span>
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
+                    <span className="text-muted-foreground font-sans">Chứng chỉ giám định sai số</span>
+                    <span className="text-emerald-400 font-bold">COSC Official Chronometer (Swiss)</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="p-5 rounded-3xl bg-card border border-[#d4af37]/25 shadow-sm">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider block mb-1">
-                Thời Lượng Trữ Cót
-              </span>
-              <span className="text-base font-bold text-[#d4af37]">{watch.specs.powerReserve}</span>
+            {/* BẢNG 3: DÂY ĐEO, KHÓA & PHIÊN BẢN MẶT SỐ */}
+            <div className="rounded-3xl bg-card border border-[#d4af37]/25 shadow-lg overflow-hidden flex flex-col justify-between">
+              <div>
+                <div className="px-6 py-4 bg-black/[0.03] dark:bg-white/[0.02] border-b border-[#d4af37]/20 flex items-center justify-between">
+                  <h3 className="font-serif text-base font-semibold text-foreground flex items-center gap-2.5">
+                    <FontAwesomeIcon icon={faFingerprint} className="w-4 h-4 text-[#d4af37]" />
+                    <span>Dây Đeo, Khóa & Màu Mặt Số</span>
+                  </h3>
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-[#d4af37] px-2 py-0.5 rounded bg-[#d4af37]/10 border border-[#d4af37]/20">
+                    Biến Thể & Hoàn Thiện
+                  </span>
+                </div>
+                <div className="divide-y divide-white/[0.04] text-xs font-mono">
+                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
+                    <span className="text-muted-foreground font-sans">Chất liệu dây đeo (Strap Material)</span>
+                    <span className="text-[#d4af37] font-bold text-right">{currentStrap}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
+                    <span className="text-muted-foreground font-sans">Loại khóa an toàn (Clasp)</span>
+                    <span className="text-foreground font-semibold">{watch.specs.clasp}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
+                    <span className="text-muted-foreground font-sans">Màu sắc mặt số (Đang chọn)</span>
+                    <span className="text-foreground font-bold">{currentDial}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
+                    <span className="text-muted-foreground font-sans">Mã định danh phiên bản (SKU)</span>
+                    <span className="text-foreground font-bold">{currentSku}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
+                    <span className="text-muted-foreground font-sans">Số tùy chọn biến thể có sẵn</span>
+                    <span className="text-foreground font-semibold">{variants.length > 0 ? variants.length + ' Tùy chọn phối màu' : '1 Phiên bản tiêu chuẩn'}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
+                    <span className="text-muted-foreground font-sans">Tình trạng sẵn có</span>
+                    <span className={currentStock > 0 ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>
+                      {currentStock > 0 ? 'Sẵn sàng bàn giao (' + currentStock + ' chiếc)' : 'Chế tác theo đơn'}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="p-5 rounded-3xl bg-card border border-[#d4af37]/25 shadow-sm">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider block mb-1">
-                Tần Số Dao Động
-              </span>
-              <span className="text-base font-bold text-foreground">{watch.specs.frequency}</span>
-            </div>
-
-            <div className="p-5 rounded-3xl bg-card border border-[#d4af37]/25 shadow-sm">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider block mb-1">
-                Số Chân Kính Ruby
-              </span>
-              <span className="text-base font-bold text-foreground">{watch.specs.jewels}</span>
-            </div>
-
-            <div className="p-5 rounded-3xl bg-card border border-[#d4af37]/25 shadow-sm">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider block mb-1">
-                Độ Chịu Nước
-              </span>
-              <span className="text-base font-bold text-foreground">{watch.specs.waterResistance}</span>
-            </div>
-
-            <div className="p-5 rounded-3xl bg-card border border-[#d4af37]/25 shadow-sm md:col-span-2">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider block mb-1">
-                Mặt Kính & Vành Bezel
-              </span>
-              <span className="text-xs font-semibold text-foreground block">{watch.specs.crystal} • {watch.specs.bezel}</span>
-            </div>
-
-            <div className="p-5 rounded-3xl bg-card border border-[#d4af37]/25 shadow-sm md:col-span-2 lg:col-span-2">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider block mb-1">
-                Chất Liệu Thân Vỏ Kim Loại Quý
-              </span>
-              <span className="text-xs font-semibold text-foreground block">{watch.specs.caseMaterial}</span>
-            </div>
-
-            <div className="p-5 rounded-3xl bg-card border border-[#d4af37]/25 shadow-sm md:col-span-2 lg:col-span-2">
-              <span className="text-[10px] text-muted-foreground uppercase tracking-wider block mb-1">
-                Dây Đeo & Khóa An Toàn
-              </span>
-              <span className="text-xs font-semibold text-foreground block">{watch.specs.strap} — {watch.specs.clasp}</span>
+            {/* BẢNG 4: BẢO HÀNH & ĐẶC QUYỀN HAUTE HORLOGERIE */}
+            <div className="rounded-3xl bg-card border border-[#d4af37]/25 shadow-lg overflow-hidden flex flex-col justify-between">
+              <div>
+                <div className="px-6 py-4 bg-black/[0.03] dark:bg-white/[0.02] border-b border-[#d4af37]/20 flex items-center justify-between">
+                  <h3 className="font-serif text-base font-semibold text-foreground flex items-center gap-2.5">
+                    <FontAwesomeIcon icon={faShieldHalved} className="w-4 h-4 text-emerald-400" />
+                    <span>Chế Độ Bảo Hành & Đặc Quyền Salon</span>
+                  </h3>
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
+                    Haute Concierge
+                  </span>
+                </div>
+                <div className="divide-y divide-white/[0.04] text-xs font-mono">
+                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
+                    <span className="text-muted-foreground font-sans">Thời hạn bảo hành chính hãng</span>
+                    <span className="text-emerald-400 font-bold">
+                      {watch.warrantyMonths ? watch.warrantyMonths + ' Tháng' : "24 Tháng"} Toàn Cầu
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
+                    <span className="text-muted-foreground font-sans">Phạm vi bảo hành</span>
+                    <span className="text-foreground font-semibold text-right">Toàn bộ Salon BRU_WATCH & Thụy Sĩ</span>
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
+                    <span className="text-muted-foreground font-sans">Hình thức vận chuyển bảo an</span>
+                    <span className="text-foreground font-semibold text-right">Xe bọc thép chuyên dụng hộ tống</span>
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
+                    <span className="text-muted-foreground font-sans">Hồ sơ chứng thực đi kèm</span>
+                    <span className="text-foreground font-semibold text-right">Thẻ NFC số hóa, Sổ COSC, Hộp sơn mài</span>
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
+                    <span className="text-muted-foreground font-sans">Chính sách kiểm định & thu đổi</span>
+                    <span className="text-foreground font-semibold text-right">Cam kết mua lại trọn đời theo thỏa ước</span>
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
+                    <span className="text-muted-foreground font-sans">Tiếp đón thượng lưu</span>
+                    <span className="text-[#d4af37] font-semibold text-right">Phòng thử VIP riêng tư kèm Sommelier</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
+
+          {/* DÒNG TÍNH NĂNG KỸ THUẬT NỔI BẬT (FEATURES BADGES) */}
+          {((watch.features && watch.features.length > 0) || (watch.highlights && watch.highlights.length > 0)) && (
+            <div className="mt-8 p-6 rounded-3xl bg-card border border-[#d4af37]/25 shadow-md">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-white/[0.05]">
+                <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-[#d4af37] font-semibold">
+                  <FontAwesomeIcon icon={faWandMagicSparkles} className="w-3.5 h-3.5 text-[#d4af37]" />
+                  <span>Tính Năng Chế Tác Đột Phá & Điểm Nhấn Kỹ Thuật</span>
+                </div>
+                <span className="text-[11px] font-mono text-muted-foreground">
+                  Được chứng thực bởi phòng thí nghiệm độc lập Thụy Sĩ
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2.5">
+                {watch.features && watch.features.map((feat) => (
+                  <span
+                    key={feat.id}
+                    className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#00844e]/15 border border-emerald-500/25 text-xs text-emerald-300 font-medium"
+                  >
+                    <FontAwesomeIcon icon={faCheck} className="w-3 h-3 text-emerald-400" />
+                    <span>{feat.name}</span>
+                  </span>
+                ))}
+                {(!watch.features || watch.features.length === 0) && watch.highlights && watch.highlights.map((h, i) => (
+                  <span
+                    key={i}
+                    className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-stone-300 font-medium"
+                  >
+                    <FontAwesomeIcon icon={faCheck} className="w-3 h-3 text-[#d4af37]" />
+                    <span>{h}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
-      {/* Section 2: Haute Horlogerie 4 Pillar Craftsmanship */}
+
+      {/* Section 2: BRU_WATCH 4 Pillar Craftsmanship */}
       <section className="py-24 max-w-7xl mx-auto px-6 sm:px-12">
         <div className="max-w-3xl mb-16">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/[0.03] dark:bg-white/[0.03] border border-[#d4af37]/35 text-[#d4af37] text-xs font-mono uppercase tracking-[0.2em] mb-4">
@@ -485,7 +859,7 @@ export default function ProductDetailView({ watch }: ProductDetailViewProps) {
             Bốn Chuẩn Mực Hoàn Thiện <span className="italic text-[#d4af37]">Bất Hủ</span>
           </h2>
           <p className="mt-3 text-xs sm:text-sm text-muted-foreground font-light leading-relaxed font-sans">
-            Tại đẳng cấp Haute Horlogerie, mỗi chi tiết dù bị che khuất dưới đáy máy cũng đều được nghệ nhân vát mép và đánh bóng bằng phương pháp truyền thống từ thế kỷ 18.
+            Tại đẳng cấp BRU_WATCH, mỗi chi tiết dù bị che khuất dưới đáy máy cũng đều được nghệ nhân vát mép và đánh bóng bằng phương pháp truyền thống từ thế kỷ 18.
           </p>
         </div>
 
@@ -576,7 +950,7 @@ export default function ProductDetailView({ watch }: ProductDetailViewProps) {
               </h2>
 
               <p className="text-xs sm:text-sm text-muted-foreground font-light leading-relaxed font-sans">
-                Khi sở hữu cỗ máy thời gian tại Maison Des Montres, quý khách không chỉ nhận được một kiệt tác đồng hồ mà còn là trọn bộ di sản độc quyền dành riêng cho giới thượng lưu.
+                Khi sở hữu cỗ máy thời gian tại BRU_WATCH, quý khách không chỉ nhận được một kiệt tác đồng hồ mà còn là trọn bộ di sản độc quyền dành riêng cho giới thượng lưu.
               </p>
 
               <div className="space-y-3 pt-2">
@@ -690,7 +1064,19 @@ export default function ProductDetailView({ watch }: ProductDetailViewProps) {
         <aside aria-label="Thanh mua hàng nhanh" className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-4xl bg-card/95 backdrop-blur-2xl border border-[#d4af37]/35 px-5 sm:px-8 py-3.5 rounded-full shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex items-center justify-between gap-4 animate-slideUp">
           <div className="flex items-center gap-3.5 min-w-0">
             <div className="relative w-11 h-11 rounded-xl bg-black/40 border border-border p-1 shrink-0 hidden sm:block">
-              <Image src={watch.image} alt={watch.name} fill className="object-contain" />
+              <Image
+                src={selectedVariant?.images?.[0] || watch.image}
+                alt={watch.name}
+                fill
+                unoptimized
+                onError={(e) => {
+                  const target = e.currentTarget as HTMLImageElement;
+                  if (!target.src.includes('submariner-emerald.jpg')) {
+                    target.src = '/images/submariner-emerald.jpg';
+                  }
+                }}
+                className="object-contain"
+              />
             </div>
             <div className="min-w-0">
               <span className="text-[10px] font-mono text-[#d4af37] uppercase tracking-wider block">
@@ -706,7 +1092,7 @@ export default function ProductDetailView({ watch }: ProductDetailViewProps) {
             <div className="text-right hidden md:block">
               <span className="text-[9px] font-mono uppercase text-muted-foreground block">Giá Niêm Yết</span>
               <span className="font-serif text-base font-bold text-[#d4af37]">
-                {formatPrice(watch.priceUSD, watch.priceVND)}
+                {formatPrice(currentPriceUSD, currentPriceVND)}
               </span>
             </div>
 

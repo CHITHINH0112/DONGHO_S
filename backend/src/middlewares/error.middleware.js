@@ -38,6 +38,12 @@ export const globalErrorHandler = (err, req, res, next) => {
     }));
   }
 
+  // Lỗi ràng buộc khóa ngoại (Foreign Key Constraint)
+  if (err.name === 'SequelizeForeignKeyConstraintError') {
+    statusCode = 400;
+    message = 'Không thể xóa hoặc thay đổi dữ liệu này do đang có các bản ghi khác (đơn hàng, số serial kho, giỏ hàng...) liên kết tới.';
+  }
+
   // Lỗi JWT
   if (err.name === 'JsonWebTokenError') {
     statusCode = 401;

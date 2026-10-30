@@ -3,6 +3,7 @@
 import React from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { WatchItem } from "@/data/watches";
 import { useCart } from "@/context/CartContext";
 import { watchAudio } from "@/utils/audio";
@@ -26,7 +27,10 @@ interface ProductCardProps {
   viewMode?: "grid" | "horizontal";
 }
 
-export default function ProductCard({ watch, viewMode = "grid" }: ProductCardProps) {
+export default function ProductCard({
+
+  // Hook router
+ watch, viewMode = "grid" }: ProductCardProps) {
   const {
     formatPrice,
     addToCart,
@@ -41,11 +45,12 @@ export default function ProductCard({ watch, viewMode = "grid" }: ProductCardPro
   const isFavorited = isInWishlist(watch.id);
   const isCompared = compareList.some((w) => w.id === watch.id);
 
+  const router = useRouter();
   const handleQuickView = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     watchAudio.click();
-    setSelectedWatchModal(watch);
+    router.push(`/products/${watch.id}`);
   };
 
   /* =========================================================================
@@ -68,6 +73,13 @@ export default function ProductCard({ watch, viewMode = "grid" }: ProductCardPro
               src={watch.image}
               alt={watch.name}
               fill
+              unoptimized
+              onError={(e) => {
+                const target = e.currentTarget as HTMLImageElement;
+                if (!target.src.includes('submariner-emerald.jpg')) {
+                  target.src = '/images/submariner-emerald.jpg';
+                }
+              }}
               sizes="(max-width: 1024px) 100vw, 380px"
               className="object-contain p-2"
             />
@@ -277,6 +289,13 @@ export default function ProductCard({ watch, viewMode = "grid" }: ProductCardPro
             src={watch.image}
             alt={watch.name}
             fill
+            unoptimized
+            onError={(e) => {
+              const target = e.currentTarget as HTMLImageElement;
+              if (!target.src.includes('submariner-emerald.jpg')) {
+                target.src = '/images/submariner-emerald.jpg';
+              }
+            }}
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             className="object-contain p-2"
           />

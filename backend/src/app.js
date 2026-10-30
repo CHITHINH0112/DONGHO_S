@@ -3,6 +3,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import apiRoutes from './routes/index.js';
 import { notFoundHandler, globalErrorHandler } from './middlewares/error.middleware.js';
 
@@ -10,10 +12,15 @@ import { attachAuditHelper } from './middlewares/audit.middleware.js';
 
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 
 // Middlewares bảo mật & tiện ích
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+}));
 
 const allowedOrigins = [
   'http://localhost:3000',
@@ -44,6 +51,9 @@ app.get('/', (req, res) => {
     documentation: '/api/v1/health',
   });
 });
+
+// Phục vụ thư mục tệp tin tĩnh (hình ảnh sản phẩm đã tải lên)
+app.use('/uploads', express.static(path.resolve(__dirname, '../uploads')));
 
 // Gắn toàn bộ API Router vào tiền tố /api/v1 và /api
 app.use('/api/v1', apiRoutes);

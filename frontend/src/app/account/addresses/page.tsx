@@ -78,26 +78,26 @@ export default function AccountAddressesPage() {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     watchAudio.chime();
     if (editingId) {
-      updateAddress(editingId, formData);
+      await updateAddress(editingId, formData);
       showToast("Cập nhật địa chỉ bảo mật thành công.");
     } else {
-      addAddress(formData);
+      await addAddress(formData);
       showToast("Đã thêm địa chỉ tiếp nhận bàn giao mới.");
     }
     setIsModalOpen(false);
   };
 
-  const handleDelete = (id: string) => {
-    deleteAddress(id);
+  const handleDelete = async (id: string) => {
+    await deleteAddress(id);
     showToast("Đã xóa địa chỉ khỏi sổ bàn giao.");
   };
 
-  const handleSetDefault = (id: string) => {
-    setDefaultAddress(id);
+  const handleSetDefault = async (id: string) => {
+    await setDefaultAddress(id);
     showToast("Đã đặt làm địa chỉ bàn giao chính thức.");
   };
 

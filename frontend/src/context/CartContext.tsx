@@ -1,14 +1,16 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { WatchItem, WATCHES } from "@/data/watches";
+import { WatchItem, WatchVariant, WATCHES } from "@/data/watches";
 import { watchAudio } from "@/utils/audio";
 
 export type Currency = "VND" | "USD" | "EUR";
 
 export interface CartEntry {
+  id?: string;
   watch: WatchItem;
   quantity: number;
+  selectedVariant?: WatchVariant;
 }
 
 interface CartContextType {
@@ -18,9 +20,9 @@ interface CartContextType {
   currency: Currency;
   setCurrency: (c: Currency) => void;
   formatPrice: (priceUSD: number, priceVND: number) => string;
-  addToCart: (watch: WatchItem, qty?: number) => void;
-  removeFromCart: (watchId: string) => void;
-  updateQuantity: (watchId: string, delta: number) => void;
+  addToCart: (watch: WatchItem, qty?: number, variant?: WatchVariant | null) => void;
+  removeFromCart: (cartEntryId: string) => void;
+  updateQuantity: (cartEntryId: string, delta: number) => void;
   clearCart: () => void;
   toggleWishlist: (watchId: string) => void;
   isInWishlist: (watchId: string) => boolean;
@@ -128,31 +130,36 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }).format(priceUSD * 0.92);
   };
 
-  const addToCart = (watch: WatchItem, qty = 1) => {
+  const addToCart = (watch: WatchItem, qty = 1, variant?: WatchVariant | null) => {
     watchAudio.click();
-    const existingIndex = cart.findIndex((e) => e.watch.id === watch.id);
+    const entryId = variant ? `${watch.id}-var-${variant.id}` : watch.id;
+    const existingIndex = cart.findIndex((e) => (e.id || e.watch.id) === entryId);
     let newCart: CartEntry[];
     if (existingIndex > -1) {
       newCart = [...cart];
       newCart[existingIndex].quantity += qty;
     } else {
-      newCart = [...cart, { watch, quantity: qty }];
+      newCart = [
+        ...cart,
+        { id: entryId, watch, quantity: qty, selectedVariant: variant || undefined },
+      ];
     }
     saveCart(newCart);
-    showToast(`Đã thêm "${watch.name}" vào giỏ hàng bảo mật.`);
+    const variantDesc = variant?.mauMatSo ? ` (${variant.mauMatSo})` : "";
+    showToast(`Đã thêm "${watch.name}${variantDesc}" vào giỏ hàng bảo mật.`);
   };
 
-  const removeFromCart = (watchId: string) => {
+  const removeFromCart = (cartEntryId: string) => {
     watchAudio.click();
-    const newCart = cart.filter((e) => e.watch.id !== watchId);
+    const newCart = cart.filter((e) => (e.id || e.watch.id) !== cartEntryId);
     saveCart(newCart);
   };
 
-  const updateQuantity = (watchId: string, delta: number) => {
+  const updateQuantity = (cartEntryId: string, delta: number) => {
     watchAudio.tick();
     const newCart = cart
       .map((e) => {
-        if (e.watch.id === watchId) {
+        if ((e.id || e.watch.id) === cartEntryId) {
           const newQty = e.quantity + delta;
           return newQty > 0 ? { ...e, quantity: newQty } : null;
         }
@@ -221,11 +228,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const subtotalVND = cart.reduce(
-    (sum, item) => sum + item.watch.priceVND * item.quantity,
+    (sum, item) => sum + (item.selectedVariant ? item.selectedVariant.priceVND : item.watch.priceVND) * item.quantity,
     0
   );
   const subtotalUSD = cart.reduce(
-    (sum, item) => sum + item.watch.priceUSD * item.quantity,
+    (sum, item) => sum + (item.selectedVariant ? item.selectedVariant.priceUSD : item.watch.priceUSD) * item.quantity,
     0
   );
 

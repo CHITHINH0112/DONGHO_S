@@ -64,13 +64,13 @@ export default function BoutiqueIntroSection() {
       <div className="max-w-6xl mx-auto px-6 sm:px-12 text-center relative z-10 mb-14">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-black/[0.03] dark:bg-white/[0.04] border border-[#d4af37]/25 text-[#9a741e] dark:text-[#d4af37] text-xs font-mono tracking-[0.25em] uppercase mb-5 backdrop-blur-md">
           <FontAwesomeIcon icon={faCompass} className="w-3 h-3 text-[#9a741e] dark:text-[#d4af37]" />
-          <span>Maison Des Montres Genève</span>
+          <span>BRU_WATCH Genève</span>
         </div>
         <h2 className="font-serif text-3xl sm:text-5xl lg:text-6xl font-normal text-foreground dark:text-white tracking-tight leading-[1.15]">
           Thánh Địa Của Nghệ Thuật Cơ Khí <span className="italic font-light text-[#9a741e] dark:text-[#f3e3be]">Thời Gian</span>
         </h2>
         <p className="mt-5 text-sm sm:text-base text-muted-foreground dark:text-white/65 leading-relaxed font-sans max-w-2xl mx-auto font-light">
-          Không gian thưởng lãm độc bản chuẩn Haute Horlogerie Thụy Sĩ. Nơi hội tụ các kiệt tác vương giả từ
+          Không gian thưởng lãm độc bản chuẩn BRU_WATCH Thụy Sĩ. Nơi hội tụ các kiệt tác vương giả từ
           <span className="text-[#006039] dark:text-[#d4af37] font-normal"> Rolex, Audemars Piguet, Patek Philippe, Vacheron Constantin</span>.
         </p>
       </div>
@@ -135,7 +135,7 @@ export default function BoutiqueIntroSection() {
         </div>
       </div>
 
-      {/* 3. Four Pillars of Maison Des Montres (Luxury shadow & hairline gold) */}
+      {/* 3. Four Pillars of BRU_WATCH (Luxury shadow & hairline gold) */}
       <div className="max-w-7xl mx-auto px-6 sm:px-12 mt-16 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
           <div className="luxury-card p-7 rounded-3xl group">

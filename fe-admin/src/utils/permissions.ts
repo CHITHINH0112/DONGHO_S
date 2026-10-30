@@ -82,6 +82,9 @@ const POSITION_PERMISSIONS: Record<string, PermissionKey[]> = {
 const ROUTE_PERMISSIONS: Record<string, PermissionKey> = {
   '/': 'DASHBOARD_VIEW',
   '/products': 'PRODUCTS_VIEW',
+  '/brands': 'PRODUCTS_VIEW',
+  '/categories': 'PRODUCTS_VIEW',
+  '/features': 'PRODUCTS_VIEW',
   '/orders': 'ORDERS_VIEW',
   '/shifts': 'SHIFTS_VIEW',
   '/warranties': 'WARRANTIES_VIEW',

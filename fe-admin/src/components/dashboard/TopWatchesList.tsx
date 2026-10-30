@@ -83,7 +83,7 @@ export default function TopWatchesList({ watches }: TopWatchesListProps) {
       <div className="mt-4 pt-3 border-t border-white/[0.05] flex items-center justify-between text-[11px] text-stone-300">
         <span className="flex items-center gap-1.5">
           <FontAwesomeIcon icon={faBoxesStacked} className="text-stone-400 text-xs" />
-          Tổng danh mục: 28 dòng máy Haute Horlogerie
+          Tổng danh mục: 28 dòng máy BRU_WATCH
         </span>
         <span className="text-emerald-400 font-medium">Bảo hiểm kho 100%</span>
       </div>

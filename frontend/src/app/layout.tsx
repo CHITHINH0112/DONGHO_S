@@ -31,12 +31,12 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "MAISON DES MONTRES | Boutique Đồng Hồ Xa Xỉ Thụy Sĩ Chính Hãng",
+  title: "BRU_WATCH | Boutique Đồng Hồ Xa Xỉ Thụy Sĩ Chính Hãng",
   description:
     "Boutique phân phối đồng hồ xa xỉ chính hãng hàng đầu Thụy Sĩ: Rolex, Audemars Piguet, Patek Philippe, Vacheron Constantin. Trải nghiệm giải phẫu 3D và phòng chờ VIP.",
   keywords: [
     "đồng hồ thụy sĩ chính hãng",
-    "maison des montres",
+    "bru_watch",
     "rolex chính hãng",
     "audemars piguet",
     "patek philippe",

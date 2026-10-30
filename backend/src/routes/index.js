@@ -14,6 +14,8 @@ import userAddressRouter from './userAddress.route.js';
 import warrantyRouter from './warranty.route.js';
 import watchServiceRouter from './watchService.route.js';
 import adminRouter from './admin.route.js';
+import uploadRouter from './upload.route.js';
+import featureRouter from './feature.route.js';
 
 const router = express.Router();
 
@@ -69,5 +71,7 @@ router.use('/user-addresses', userAddressRouter);
 router.use('/warranties', warrantyRouter);
 router.use('/services', watchServiceRouter);
 router.use('/admin', adminRouter);
+router.use('/upload', uploadRouter);
+router.use('/features', featureRouter);
 
 export default router;

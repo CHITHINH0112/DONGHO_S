@@ -19,6 +19,8 @@ import {
   faXmark,
   faBoxesStacked,
   faWrench,
+  faTag,
+  faLayerGroup,
 } from '@fortawesome/free-solid-svg-icons';
 import { useAdminAuth } from '@/context/AdminAuthContext';
 import { canAccessRoute, getPositionBadgeInfo } from '@/utils/permissions';
@@ -44,8 +46,29 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
       name: 'Kho Đồng Hồ & Mẫu',
       href: '/products',
       icon: faClock,
-      badge: '28 chiếc',
+      badge: null,
     },
+    {
+      name: 'Thương Hiệu & Hãng',
+      href: '/brands',
+      icon: faTag,
+      badge: null,
+    },
+    {
+      name: 'Danh Mục Chế Tác',
+      href: '/categories',
+      icon: faLayerGroup,
+      badge: null,
+    },
+    {
+      name: 'Tính Năng Kỹ Thuật',
+      href: '/features',
+      icon: faSliders,
+      badge: null,
+    },
+    /* =========================================================================
+     * CÁC PHÂN HỆ TẠM ẨN CHO DEADLINE (CHƯA CẦN THIẾT):
+     * =========================================================================
     {
       name: 'Đơn Hàng & Cọc VIP',
       href: '/orders',
@@ -84,6 +107,7 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
       icon: faSliders,
       badge: null,
     },
+    ========================================================================= */
   ];
 
   return (
@@ -98,9 +122,8 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-72 flex flex-col bg-[#09110d] border-r border-[#d4af37]/15 transition-transform duration-300 ease-in-out lg:translate-x-0 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed top-0 bottom-0 left-0 z-50 w-72 flex flex-col bg-[#09110d] border-r border-[#d4af37]/15 transition-transform duration-300 ease-in-out lg:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'
+          }`}
       >
         {/* Brand Header */}
         <div className="h-20 px-6 flex items-center justify-between border-b border-white/[0.06] bg-[#070e0a]/80 backdrop-blur-md">
@@ -110,10 +133,10 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
             </div>
             <div>
               <div className="text-sm font-semibold tracking-[0.2em] text-white uppercase font-sans flex items-center gap-1.5">
-                CHRONO<span className="text-[#d4af37]">LUXE</span>
+                BRU_WATCH<span className="text-[#d4af37]"></span>
               </div>
               <div className="text-[10px] tracking-[0.25em] text-[#d4af37]/70 uppercase font-light">
-                Haute Horlogerie
+                LUXURY
               </div>
             </div>
           </Link>
@@ -128,55 +151,27 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
         </div>
 
         {/* Position-Specific Status Banner */}
-        {positionInfo.canAccessCashRegister ? (
-          <div className="mx-4 my-3 px-3.5 py-2.5 rounded-lg bg-[#0c1a13]/80 border border-emerald-500/20 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              <div className="text-[11px] leading-tight">
-                <span className="text-emerald-400 font-medium block">Ca Chiều Đang Trực</span>
-                <span className="text-stone-400 text-[10px]">{admin?.name || 'Thu ngân'}</span>
-              </div>
-            </div>
-            <span className="text-[10px] text-[#d4af37] font-mono font-medium bg-[#d4af37]/10 px-2 py-0.5 rounded border border-[#d4af37]/20">
-              162.4M ₫
+        <div className="mx-4 my-3 px-3.5 py-2.5 rounded-lg bg-[#0c1a13]/80 border border-[#d4af37]/20 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
-          </div>
-        ) : admin?.position === 'warehouse' ? (
-          <div className="mx-4 my-3 px-3.5 py-2.5 rounded-lg bg-[#141d0e]/80 border border-amber-500/25 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <FontAwesomeIcon icon={faBoxesStacked} className="text-amber-400 text-xs" />
-              <div className="text-[11px] leading-tight">
-                <span className="text-amber-400 font-medium block">Kho Boutique Trung Tâm</span>
-                <span className="text-stone-400 text-[10px]">Tồn kho: 28 chiếc Swiss</span>
-              </div>
+            <div className="text-[11px] leading-tight">
+              <span className="text-emerald-400 font-medium block">Hệ Thống Trực Tuyến</span>
+              <span className="text-stone-400 text-[10px]"></span>
             </div>
-            <span className="text-[10px] text-amber-400 font-mono font-medium bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-              100% Khớp
-            </span>
           </div>
-        ) : (
-          <div className="mx-4 my-3 px-3.5 py-2.5 rounded-lg bg-[#0e181d]/80 border border-sky-500/25 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <FontAwesomeIcon icon={faWrench} className="text-sky-400 text-xs" />
-              <div className="text-[11px] leading-tight">
-                <span className="text-sky-400 font-medium block">Phòng Lab Kỹ Thuật</span>
-                <span className="text-stone-400 text-[10px]">2 đồng hồ bảo dưỡng</span>
-              </div>
-            </div>
-            <span className="text-[10px] text-sky-400 font-mono font-medium bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">
-              Chuẩn COSC
-            </span>
-          </div>
-        )}
+          <span className="text-[10px] text-[#d4af37] font-mono font-medium bg-[#d4af37]/10 px-2 py-0.5 rounded border border-[#d4af37]/20">
+            {admin?.name || 'Admin'}
+          </span>
+        </div>
 
         {/* Navigation Section */}
         <nav className="flex-1 px-3 space-y-1 overflow-y-auto py-2">
           <div className="px-3 pb-2 pt-1 flex items-center justify-between text-[10px] uppercase font-semibold tracking-[0.2em] text-stone-300">
-            <span>Phân Hệ Được Cấp Quyền</span>
-            <span className="font-mono text-[#d4af37] text-[9px] lowercase">({navigation.filter(item => canAccessRoute(admin, item.href)).length} mục)</span>
+            <span>Phân Hệ Hoạt Động</span>
+            <span className="font-mono text-[#d4af37] text-[9px] lowercase">({navigation.length} mục)</span>
           </div>
 
           {navigation
@@ -188,19 +183,17 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
                   key={item.href}
                   href={item.href}
                   onClick={onClose}
-                  className={`group flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-normal transition-all duration-200 ${
-                    isActive
-                      ? 'bg-gradient-to-r from-[#00844e]/20 to-transparent text-[#f4f6f5] border-l-2 border-[#d4af37] font-medium shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]'
-                      : 'text-stone-300 hover:text-white hover:bg-white/[0.04]'
-                  }`}
+                  className={`group flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-normal transition-all duration-200 ${isActive
+                    ? 'bg-gradient-to-r from-[#00844e]/20 to-transparent text-[#f4f6f5] border-l-2 border-[#d4af37] font-medium shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]'
+                    : 'text-stone-300 hover:text-white hover:bg-white/[0.04]'
+                    }`}
                 >
                   <div className="flex items-center gap-3">
                     <div
-                      className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${
-                        isActive
-                          ? 'text-[#d4af37] bg-[#d4af37]/10'
-                          : 'text-stone-300 group-hover:text-[#d4af37]'
-                      }`}
+                      className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${isActive
+                        ? 'text-[#d4af37] bg-[#d4af37]/10'
+                        : 'text-stone-300 group-hover:text-[#d4af37]'
+                        }`}
                     >
                       <FontAwesomeIcon icon={item.icon} className="text-sm" />
                     </div>
@@ -209,13 +202,7 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
 
                   {item.badge && (
                     <span
-                      className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
-                        item.badgeColor === 'gold'
-                          ? 'bg-[#d4af37]/15 text-[#d4af37] border-[#d4af37]/30'
-                          : item.badgeColor === 'emerald'
-                          ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                          : 'bg-white/[0.05] text-stone-300 border-white/[0.08]'
-                      }`}
+                      className="text-[10px] font-medium px-2 py-0.5 rounded-full border bg-white/[0.05] text-stone-300 border-white/[0.08]"
                     >
                       {item.badge}
                     </span>
@@ -236,7 +223,7 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
               </div>
               <div className="text-left min-w-0">
                 <div className="text-xs font-medium text-stone-200 truncate">
-                  {admin?.name || 'Nhân Viên'}
+                  {admin?.name || 'Quản Trị Viên'}
                 </div>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded border font-medium truncate ${positionInfo.badgeColor}`}>
