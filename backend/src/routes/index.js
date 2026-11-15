@@ -16,6 +16,8 @@ import watchServiceRouter from './watchService.route.js';
 import adminRouter from './admin.route.js';
 import uploadRouter from './upload.route.js';
 import featureRouter from './feature.route.js';
+import serialRouter from './serial.route.js';
+import userRouter from './user.route.js';
 
 const router = express.Router();
 
@@ -73,5 +75,8 @@ router.use('/services', watchServiceRouter);
 router.use('/admin', adminRouter);
 router.use('/upload', uploadRouter);
 router.use('/features', featureRouter);
+router.use('/serials', serialRouter);
+router.use('/users', userRouter);
+router.use('/user', userRouter);
 
 export default router;

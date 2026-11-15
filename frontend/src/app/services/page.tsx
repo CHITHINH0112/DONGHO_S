@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
+import { apiClient } from "@/lib/axios";
 import { watchAudio } from "@/utils/audio";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -12,101 +13,66 @@ import {
   faClock,
   faAward,
   faCalendarCheck,
-  faCheck,
-  faGem,
-  faTruck,
-  faLocationDot,
-  faPhone,
-  faUser,
   faCircleCheck,
   faCrown,
+  faSpinner,
+  faCircleInfo,
 } from "@fortawesome/free-solid-svg-icons";
 
-interface ServiceItem {
-  id: string;
+interface DbServiceItem {
+  id: number;
   name: string;
-  category: string;
-  description: string;
-  estimatedTime: string;
-  priceVND: number;
-  priceUSD: number;
-  vipBenefit: string;
+  serviceType: string;
+  basePrice: string | number;
+  estimatedDays: number;
+  isActive: boolean;
 }
 
-const SERVICES_CATALOG: ServiceItem[] = [
-  {
-    id: "srv-1",
-    name: "Bảo Dưỡng Cỗ Máy Toàn Diện (Complete Overhaul)",
-    category: "Cơ Học Máy",
-    description:
-      "Tháo rã hoàn toàn hơn 300 chi tiết máy, tẩy rửa siêu âm đa tầng dung dịch Elma Thụy Sĩ, bôi trơn 5 loại dầu Moebius đặc chế, thay thế gioăng đệm và cân chỉnh sai số đạt chuẩn Chronometer COSC.",
-    estimatedTime: "7 - 10 Ngày",
-    priceVND: 12500000,
-    priceUSD: 500,
-    vipBenefit: "Giảm 100% cho Hội viên Diamond & Platinum",
+const SERVICE_TYPE_LABELS: Record<string, { category: string; description: string; vipBenefit: string }> = {
+  battery: {
+    category: "Năng Lượng Pin",
+    description: "Sử dụng pin chuẩn Thụy Sĩ / Nhật Bản chính hãng, vệ sinh khoang máy và kiểm tra dòng điện vi cơ học.",
+    vipBenefit: "Bảo hành nguồn pin 12 - 24 tháng chính hãng",
   },
-  {
-    id: "srv-2",
-    name: "Đánh Bóng & Phục Chế Vỏ Vàng / Bạch Kim (Haute Refinishing)",
-    category: "Ngoại Thất",
-    description:
-      "Kỹ thuật đánh bóng gương và chải xước satin thủ công theo góc vát nguyên bản (Bevel polishing) bảo tồn 100% tỷ lệ vàng và phom dáng xuất xưởng của cỗ máy, không làm mòn góc cạnh.",
-    estimatedTime: "3 - 5 Ngày",
-    priceVND: 6500000,
-    priceUSD: 260,
-    vipBenefit: "Tặng kèm 1 lần/năm cho Hội viên Emerald",
-  },
-  {
-    id: "srv-3",
-    name: "Kiểm Định Sai Số Chronometer & Test Áp Suất Nước 30 Bar",
-    category: "Kiểm Định",
-    description:
-      "Đo biểu đồ xung nhịp cỗ máy trên máy đo Witschi Chronoscope Thụy Sĩ 6 tư thế. Thử áp suất buồng chân không và buồng nước cao áp 300m / 30 bar kèm cấp chứng thư sai số chính hãng.",
-    estimatedTime: "Lấy Ngay (60 Phút)",
-    priceVND: 1500000,
-    priceUSD: 60,
-    vipBenefit: "Miễn phí vĩnh viễn trọn đời cho toàn bộ khách VIP",
-  },
-  {
-    id: "srv-4",
-    name: "Thay Pin Thụy Sĩ Renata & Gioăng Kín Khí Chống Nhiễm Từ",
-    category: "Bảo Dưỡng Nhanh",
-    description:
-      "Sử dụng pin oxit bạc Renata chuẩn Thụy Sĩ không rò rỉ dung môi. Vệ sinh mạch vi điện tử, thay thế toàn bộ gioăng nắp đáy và núm vặn, thử kín nước áp lực.",
-    estimatedTime: "Lấy Ngay (30 Phút)",
-    priceVND: 1200000,
-    priceUSD: 48,
-    vipBenefit: "Bảo hành pin 24 tháng không điều kiện",
-  },
-  {
-    id: "srv-5",
-    name: "May Đo Dây Da Cá Sấu Alligator Pháp Thủ Công Bespoke",
+  strap: {
     category: "Chế Tác Dây",
-    description:
-      "Chất liệu da cá sấu Mississippi hoặc Alligator Pháp thuộc thảo mộc cao cấp nhất, khâu tay thủ công bằng chỉ sáp Hermès, may đo riêng vừa vặn tuyệt đối theo chu vi cổ tay và khóa gập.",
-    estimatedTime: "5 - 7 Ngày",
-    priceVND: 8500000,
-    priceUSD: 340,
-    vipBenefit: "Khắc tên chữ cái vàng kim mặt trong dây đeo",
+    description: "Thay thế và cân chỉnh dây da, dây kim loại, dây cao su cao cấp tương thích chuẩn xác với phom vỏ.",
+    vipBenefit: "Tặng kèm vệ sinh và khử mùi dây đeo",
   },
-  {
-    id: "srv-6",
-    name: "Thay Kính Sapphire Nguyên Khối Phủ Chống Lóa Kép (Double AR)",
-    category: "Kính & Mặt Số",
-    description:
-      "Kính Sapphire tinh thể nguyên khối độ cứng 9 Mohs (chỉ sau kim cương), được phủ 2 lớp chống lóa quang học cao cấp giúp mặt số trong suốt không tì vết dưới ánh sáng mạnh.",
-    estimatedTime: "2 - 3 Ngày",
-    priceVND: 9500000,
-    priceUSD: 380,
-    vipBenefit: "Bảo hành chống bong tróc lớp AR 3 năm",
+  resize: {
+    category: "Cắt Chỉnh Dây",
+    description: "Rút hoặc thêm mắt dây kim loại tỉ mỉ theo chu vi cổ tay khách hàng, không làm xước chốt nối.",
+    vipBenefit: "Miễn phí căn chỉnh trọn đời cho khách hàng BRU_WATCH",
   },
-];
+  polish: {
+    category: "Đánh Bóng & Phục Chế",
+    description: "Kỹ thuật đánh bóng gương và chải xước satin thủ công bảo tồn góc vát nguyên bản của thân vỏ và vành bezel.",
+    vipBenefit: "Kiểm tra độ cân bằng vỏ máy sau khi hoàn thiện",
+  },
+  waterproof: {
+    category: "Kiểm Tra Áp Suất & Ép Gioăng",
+    description: "Thay thế toàn bộ gioăng nắp đáy, núm vặn và kiểm tra áp suất buồng chân không chuẩn kháng nước.",
+    vipBenefit: "Cấp giấy chứng nhận kháng nước sau kiểm định",
+  },
+  repair: {
+    category: "Sửa Chữa Vi Cơ Học",
+    description: "Chẩn đoán và khắc phục sự cố sai số, kẹt cót, đứt dây tóc hoặc hỏng chi tiết truyền động cơ học.",
+    vipBenefit: "Bảo hành kỹ thuật sửa chữa 12 tháng",
+  },
+  service: {
+    category: "Bảo Dưỡng Toàn Diện",
+    description: "Tháo rã hoàn toàn chi tiết máy, tẩy rửa siêu âm dung dịch chuyên dụng, tra dầu chính hãng Moebius và cân chỉnh sai số.",
+    vipBenefit: "Gói bảo dưỡng cao cấp chuẩn chuyên gia kỹ thuật",
+  },
+};
 
 export default function ServicesPage() {
-  const { formatPrice, showToast } = useCart();
+  const { showToast } = useCart();
   const { user } = useAuth();
 
-  const [bookingService, setBookingService] = useState<string>("srv-1");
+  const [services, setServices] = useState<DbServiceItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [bookingServiceId, setBookingServiceId] = useState<number | string>("");
   const [customerName, setCustomerName] = useState(user?.name || "");
   const [customerPhone, setCustomerPhone] = useState(user?.phone || "");
   const [watchInfo, setWatchInfo] = useState("");
@@ -114,11 +80,40 @@ export default function ServicesPage() {
   const [locationType, setLocationType] = useState<"salon" | "home">("salon");
   const [isSubmitted, setIsSubmitted] = useState(false);
 
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        setLoading(true);
+        const res = await apiClient.get("/services");
+        const data = res.data?.data;
+        if (Array.isArray(data) && data.length > 0) {
+          const activeOnly = data.filter((s: DbServiceItem) => s.isActive !== false);
+          setServices(activeOnly);
+          setBookingServiceId(activeOnly[0]?.id || "");
+        } else {
+          setServices([]);
+        }
+      } catch (err) {
+        console.error("Lỗi khi tải bảng giá dịch vụ:", err);
+        setServices([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchServices();
+  }, []);
+
   const handleSubmitBooking = (e: React.FormEvent) => {
     e.preventDefault();
     watchAudio.chime();
     setIsSubmitted(true);
     showToast("Đã ghi nhận lịch hẹn kiểm định cỗ máy.");
+  };
+
+  const formatPriceVND = (price: string | number) => {
+    const num = typeof price === "number" ? price : parseFloat(price);
+    return `${new Intl.NumberFormat("vi-VN").format(num)} ₫`;
   };
 
   return (
@@ -132,10 +127,10 @@ export default function ServicesPage() {
           BRU_WATCH ATELIER • GENÈVE STANDARDS
         </span>
         <h1 className="font-serif text-2xl sm:text-4xl font-normal text-foreground mt-1">
-          Dịch Vụ Kỹ Thuật & Bảo Dưỡng Thụy Sĩ
+          Dịch Vụ Kỹ Thuật & Bảo Dưỡng Đồng Hồ
         </h1>
         <p className="text-xs text-muted-foreground mt-2 font-light leading-relaxed">
-          Được thực hiện trực tiếp bởi các Master Watchmaker chứng nhận tại Thụy Sĩ với thiết bị kiểm định Witschi, buồng áp suất chân không và phụ tùng nguyên bản 100%.
+          Được thực hiện trực tiếp bởi các Master Watchmaker với trang thiết bị đo đạc điện tử, buồng thử áp suất chân không và linh kiện chuẩn xác.
         </p>
       </div>
 
@@ -147,65 +142,90 @@ export default function ServicesPage() {
               Bảng Giá Niêm Yết Dịch Vụ Chính Hãng
             </h3>
             <span className="text-xs font-mono text-muted-foreground">
-              6 Phân Hệ Tiêu Chuẩn
+              {services.length} Dịch Vụ Hệ Thống
             </span>
           </div>
 
-          <div className="space-y-4">
-            {SERVICES_CATALOG.map((srv) => (
-              <div
-                key={srv.id}
-                className="p-5 sm:p-6 rounded-3xl bg-card border border-border hover:border-[#d4af37]/50 transition-all shadow-md group"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono uppercase text-[#d4af37] px-2 py-0.5 rounded-md bg-[#d4af37]/10 border border-[#d4af37]/20">
-                        {srv.category}
-                      </span>
-                      <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-1">
-                        <FontAwesomeIcon icon={faClock} className="w-2.5 h-2.5" />
-                        <span>{srv.estimatedTime}</span>
-                      </span>
-                    </div>
+          {loading ? (
+            <div className="p-12 text-center text-[#d4af37] font-mono text-xs flex items-center justify-center gap-2">
+              <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin" />
+              <span>Đang tải bảng giá dịch vụ từ hệ thống...</span>
+            </div>
+          ) : services.length === 0 ? (
+            <div className="p-8 rounded-3xl bg-card border border-border text-center">
+              <FontAwesomeIcon icon={faCircleInfo} className="w-8 h-8 text-muted-foreground mb-3" />
+              <p className="text-sm text-foreground">Hiện chưa có gói dịch vụ nào được công bố.</p>
+              <p className="text-xs text-muted-foreground mt-1">Quý khách vui lòng liên hệ trực tiếp hotline để được hỗ trợ.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {services.map((srv) => {
+                const meta = SERVICE_TYPE_LABELS[srv.serviceType] || {
+                  category: "Kỹ Thuật",
+                  description: "Dịch vụ kỹ thuật tiêu chuẩn thực hiện bởi đội ngũ thợ đồng hồ giàu kinh nghiệm.",
+                  vipBenefit: "Cam kết chuẩn quy trình xuất xưởng",
+                };
+                const timeText =
+                  srv.estimatedDays <= 1
+                    ? "Lấy Ngay Trong Ngày"
+                    : `${srv.estimatedDays} Ngày Làm Việc`;
 
-                    <h4 className="font-serif text-base font-medium text-foreground mt-2">
-                      {srv.name}
-                    </h4>
-                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed font-light">
-                      {srv.description}
-                    </p>
+                return (
+                  <div
+                    key={srv.id}
+                    className="p-5 sm:p-6 rounded-3xl bg-card border border-border hover:border-[#d4af37]/50 transition-all shadow-md group"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-mono uppercase text-[#d4af37] px-2 py-0.5 rounded-md bg-[#d4af37]/10 border border-[#d4af37]/20">
+                            {meta.category}
+                          </span>
+                          <span className="text-[10px] font-mono text-muted-foreground flex items-center gap-1">
+                            <FontAwesomeIcon icon={faClock} className="w-2.5 h-2.5" />
+                            <span>{timeText}</span>
+                          </span>
+                        </div>
 
-                    <div className="mt-3 flex items-center gap-1.5 text-[11px] font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/30 w-fit">
-                      <FontAwesomeIcon icon={faCrown} className="w-2.5 h-2.5 text-[#d4af37]" />
-                      <span>{srv.vipBenefit}</span>
+                        <h4 className="font-serif text-base font-medium text-foreground mt-2">
+                          {srv.name}
+                        </h4>
+                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed font-light">
+                          {meta.description}
+                        </p>
+
+                        <div className="mt-3 flex items-center gap-1.5 text-[11px] font-mono text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/30 w-fit">
+                          <FontAwesomeIcon icon={faCrown} className="w-2.5 h-2.5 text-[#d4af37]" />
+                          <span>{meta.vipBenefit}</span>
+                        </div>
+                      </div>
+
+                      <div className="sm:text-right shrink-0 pt-2 sm:pt-0">
+                        <span className="text-[10px] font-mono uppercase text-muted-foreground block">
+                          Chi Phí Niêm Yết
+                        </span>
+                        <span className="font-serif text-base sm:text-lg font-bold text-[#d4af37]">
+                          {formatPriceVND(srv.basePrice)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            watchAudio.click();
+                            setBookingServiceId(srv.id);
+                            const formElem = document.getElementById("booking-form");
+                            if (formElem) formElem.scrollIntoView({ behavior: "smooth" });
+                          }}
+                          className="mt-2 block w-full sm:w-auto px-4 py-1.5 rounded-lg border border-border group-hover:border-[#d4af37] text-xs font-mono text-foreground hover:text-[#d4af37] transition-colors cursor-pointer text-center"
+                        >
+                          Chọn Đặt Lịch
+                        </button>
+                      </div>
                     </div>
                   </div>
-
-                  <div className="sm:text-right shrink-0 pt-2 sm:pt-0">
-                    <span className="text-[10px] font-mono uppercase text-muted-foreground block">
-                      Chi Phí Niêm Yết
-                    </span>
-                    <span className="font-serif text-base sm:text-lg font-bold text-foreground">
-                      {formatPrice(srv.priceUSD, srv.priceVND)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        watchAudio.click();
-                        setBookingService(srv.id);
-                        const formElem = document.getElementById("booking-form");
-                        if (formElem) formElem.scrollIntoView({ behavior: "smooth" });
-                      }}
-                      className="mt-2 block w-full sm:w-auto px-4 py-1.5 rounded-lg border border-border group-hover:border-[#d4af37] text-xs font-mono text-foreground hover:text-[#d4af37] transition-colors cursor-pointer text-center"
-                    >
-                      Chọn Đặt Lịch
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Right Column: Service Booking Form (5 cols) */}
@@ -220,7 +240,7 @@ export default function ServicesPage() {
                   Đặt Lịch Tiếp Nhận Cỗ Máy
                 </h3>
                 <span className="text-xs text-muted-foreground font-light">
-                  Phục vụ tại Salon hoặc tiếp nhận bằng xe bọc thép
+                  Phục vụ tại Trung tâm hoặc tiếp nhận tận nơi
                 </span>
               </div>
             </div>
@@ -234,12 +254,12 @@ export default function ServicesPage() {
                   Lịch Hẹn Đã Được Tiếp Nhận
                 </h4>
                 <p className="text-xs text-muted-foreground font-light max-w-xs mx-auto leading-relaxed">
-                  Trưởng phòng Kỹ thuật Thụy Sĩ sẽ gọi trực tiếp đến số điện thoại của Quý khách để xác nhận cỗ máy và sắp xếp chuyên viên bảo an tiếp đón.
+                  Chuyên viên kỹ thuật BRU_WATCH sẽ liên hệ trực tiếp qua số điện thoại của Quý khách để xác nhận cỗ máy và sắp xếp lịch tiếp đón chu đáo.
                 </p>
                 <button
                   type="button"
                   onClick={() => setIsSubmitted(false)}
-                  className="px-6 py-2.5 rounded-full bg-[#d4af37] text-black text-xs font-mono font-semibold uppercase"
+                  className="px-6 py-2.5 rounded-full bg-[#d4af37] text-black text-xs font-mono font-semibold uppercase cursor-pointer"
                 >
                   Đặt Thêm Lịch Hẹn Khác
                 </button>
@@ -251,13 +271,13 @@ export default function ServicesPage() {
                     Gói Dịch Vụ Cần Thực Hiện
                   </label>
                   <select
-                    value={bookingService}
-                    onChange={(e) => setBookingService(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-[#d4af37]"
+                    value={bookingServiceId}
+                    onChange={(e) => setBookingServiceId(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#070e0a] border border-[#d4af37]/40 text-[#f3e3be] text-xs font-mono focus:outline-none focus:border-[#d4af37]"
                   >
-                    {SERVICES_CATALOG.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
+                    {services.map((s) => (
+                      <option key={s.id} value={s.id} className="bg-[#0c1610] text-[#f3e3be]">
+                        {s.name} - {formatPriceVND(s.basePrice)}
                       </option>
                     ))}
                   </select>
@@ -271,7 +291,7 @@ export default function ServicesPage() {
                     <input
                       type="text"
                       required
-                      placeholder="ví dụ: Alexander Vũ"
+                      placeholder="ví dụ: Nguyễn Văn A"
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-[#d4af37]"
@@ -280,12 +300,12 @@ export default function ServicesPage() {
 
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-mono uppercase text-muted-foreground">
-                      Số Điện Thoại VIP
+                      Số Điện Thoại
                     </label>
                     <input
                       type="tel"
                       required
-                      placeholder="0908 889 999"
+                      placeholder="0908 123 456"
                       value={customerPhone}
                       onChange={(e) => setCustomerPhone(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-[#d4af37] font-mono"
@@ -300,7 +320,7 @@ export default function ServicesPage() {
                   <input
                     type="text"
                     required
-                    placeholder="ví dụ: Rolex Daytona 126500LN / Patek Philippe 5711..."
+                    placeholder="ví dụ: Rolex Submariner / Casio Edifice..."
                     value={watchInfo}
                     onChange={(e) => setWatchInfo(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-[#d4af37]"
@@ -334,7 +354,7 @@ export default function ServicesPage() {
                           : "border-border bg-muted/20 text-muted-foreground"
                       }`}
                     >
-                      Boutique VIP Salon
+                      Tại Trung Tâm Kỹ Thuật
                     </button>
                     <button
                       type="button"
@@ -345,7 +365,7 @@ export default function ServicesPage() {
                           : "border-border bg-muted/20 text-muted-foreground"
                       }`}
                     >
-                      Xe Bọc Thép Tận Tư Gia
+                      Tiếp Nhận Tận Nơi
                     </button>
                   </div>
                 </div>
@@ -355,7 +375,7 @@ export default function ServicesPage() {
                   className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#d4af37] via-[#c69f2e] to-[#b38f28] text-black font-mono text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-[#d4af37]/20 hover:scale-101 active:scale-99 transition-all cursor-pointer mt-2"
                 >
                   <FontAwesomeIcon icon={faCalendarCheck} className="w-3.5 h-3.5" />
-                  <span>Xác Nhận Đặt Lịch Hẹn Thẩm Định</span>
+                  <span>Xác Nhận Đặt Lịch Hẹn</span>
                 </button>
               </form>
             )}

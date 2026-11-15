@@ -30,6 +30,14 @@ import {
   faStar,
   faSliders,
   faWandMagicSparkles,
+  faFileExcel,
+  faDownload,
+  faWarehouse,
+  faBarcode,
+  faCircleInfo,
+  faCheckDouble,
+  faTableList,
+  faEye,
 } from '@fortawesome/free-solid-svg-icons';
 import { useAdminAuth } from '@/context/AdminAuthContext';
 import { hasPermission } from '@/utils/permissions';
@@ -51,7 +59,17 @@ interface Variant {
   costPrice?: string | number | null;
   status: 'active' | 'hidden';
   mauMatSo?: string | null;
+  mauDayDeo?: string | null;
+  mauNieng?: string | null;
   images?: VariantImage[];
+  serialNumbers?: Array<{
+    id: number;
+    serialNumber: string;
+    status: string;
+    itemCondition?: string;
+    location?: string;
+    [key: string]: any;
+  }>;
 }
 
 interface Feature {
@@ -73,6 +91,7 @@ interface Product {
   chatLieuKinh?: string | null;
   duongKinhMatSo?: string | number | null;
   beDayMatSo?: string | number | null;
+  khoiLuong?: string | number | null;
   chatLieuNieng?: string | null;
   chatLieuDayDeo?: string | null;
   khaNangChongNuoc?: string | null;
@@ -97,6 +116,21 @@ interface Category {
   id: number;
   name: string;
   slug: string;
+  parentId?: number | null;
+  children?: Category[];
+}
+
+function formatCurrencyInput(val: string | number | undefined | null): string {
+  if (val === undefined || val === null || val === '') return '';
+  const cleanDigits = String(val).replace(/\D/g, '');
+  if (!cleanDigits) return '';
+  return cleanDigits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function parseCurrencyInput(formatted: string | number | undefined | null): number {
+  if (formatted === undefined || formatted === null || formatted === '') return 0;
+  const cleanDigits = String(formatted).replace(/\D/g, '');
+  return cleanDigits ? Number(cleanDigits) : 0;
 }
 
 export default function ProductsPage() {
@@ -138,6 +172,7 @@ export default function ProductsPage() {
     chatLieuKinh: 'Kính Sapphire chống phản chiếu',
     duongKinhMatSo: '40.0',
     beDayMatSo: '10.5',
+    khoiLuong: '145.0',
     chatLieuNieng: 'Thép không gỉ 316L',
     chatLieuDayDeo: 'Dây Thép Không Gỉ 316L',
     khaNangChongNuoc: '10 ATM (100m)',
@@ -149,6 +184,16 @@ export default function ProductsPage() {
   };
 
   const [productForm, setProductForm] = useState(initialProductForm);
+
+  // Modal Bảng Thông Số Kỹ Thuật (Table View)
+  const [selectedProductForSpecs, setSelectedProductForSpecs] = useState<Product | null>(null);
+
+  // Modal Nhập Serial Bằng Excel (Admin Import -> Giao Kho Kiểm Tra)
+  const [showSerialImportModal, setShowSerialImportModal] = useState<boolean>(false);
+  const [excelFile, setExcelFile] = useState<File | null>(null);
+  const [importingExcel, setImportingExcel] = useState<boolean>(false);
+  const [importResult, setImportResult] = useState<any>(null);
+  const excelInputRef = React.useRef<HTMLInputElement | null>(null);
 
   // Modal Thêm / Sửa Biến Thể
   const [showVariantModal, setShowVariantModal] = useState<boolean>(false);
@@ -172,7 +217,53 @@ export default function ProductsPage() {
     { label: 'Nâu Chocolate', color: '#78350f' },
   ];
 
-  // Danh sách các tag gợi ý chất liệu dây đeo
+  // Gợi ý màu sắc / chất liệu niềng
+  const SUGGESTED_BEZEL_COLORS = [
+    { label: 'Bạc Silver', color: '#cbd5e1' },
+    { label: 'Vàng Gold 18K', color: '#fde047' },
+    { label: 'Vàng Hồng Rose Gold', color: '#fb7185' },
+    { label: 'Đen Ceramic', color: '#171717' },
+    { label: 'Xanh Biển Ceramic', color: '#0284c7' },
+    { label: 'Xanh Lá Emerald', color: '#059669' },
+    { label: 'Titan Tự Nhiên', color: '#94a3b8' },
+  ];
+
+  // Gợi ý màu dây đeo
+  const SUGGESTED_STRAP_COLORS = [
+    { label: 'Dây Thép Bạc', color: '#cbd5e1' },
+    { label: 'Dây Da Nâu', color: '#78350f' },
+    { label: 'Dây Da Đen', color: '#1a1a1a' },
+    { label: 'Dây Vàng Gold 18K', color: '#fde047' },
+    { label: 'Dây Demi Vàng', color: '#eab308' },
+    { label: 'Dây Cao Su Đen', color: '#0f172a' },
+    { label: 'Dây Xanh Hải Quân', color: '#1e3a8a' },
+  ];
+
+  // Danh sách các tag gợi ý Mặt Kính cho Product form
+  const SUGGESTED_GLASS = [
+    'Kính Sapphire nguyên khối',
+    'Sapphire cong phủ AR chống lóa',
+    'Sapphire Cyclops phóng đại lịch',
+    'Kính Khoáng Mineral Crystal',
+    'Kính Vòm Hardlex siêu bền',
+    'Kính Hesalite phong cách Retro',
+  ];
+
+  // Danh sách các tag gợi ý Chất Liệu Niềng cho Product form
+  const SUGGESTED_BEZEL_MATERIALS = [
+    'Thép không gỉ 316L',
+    'Thép 904L Oystersteel',
+    'Gốm Ceramic chống trầy',
+    'Vàng Gold 18K nguyên khối',
+    'Vàng Hồng Everose 18K',
+    'Vàng Trắng White Gold 18K',
+    'Titanium Grade 5 siêu nhẹ',
+    'Bạch Kim Platinum 950',
+    'Niềng đính kim cương',
+    'Carbon Forged siêu bền',
+  ];
+
+  // Danh sách các tag gợi ý chất liệu dây đeo cho Product form
   const SUGGESTED_STRAPS = [
     'Dây Thép Không Gỉ 316L',
     'Dây Da Cá Sấu (Alligator)',
@@ -193,6 +284,8 @@ export default function ProductsPage() {
     price: '',
     costPrice: '',
     mauMatSo: 'Đen Sunray',
+    mauDayDeo: 'Dây Thép Bạc',
+    mauNieng: 'Bạc Silver',
     status: 'active' as 'active' | 'hidden',
   });
 
@@ -358,6 +451,7 @@ export default function ProductsPage() {
       chatLieuKinh: product.chatLieuKinh || '',
       duongKinhMatSo: product.duongKinhMatSo ? String(product.duongKinhMatSo) : '',
       beDayMatSo: product.beDayMatSo ? String(product.beDayMatSo) : '',
+      khoiLuong: product.khoiLuong ? String(product.khoiLuong) : '',
       chatLieuNieng: product.chatLieuNieng || '',
       chatLieuDayDeo: product.chatLieuDayDeo || 'Dây Thép Không Gỉ 316L',
       khaNangChongNuoc: product.khaNangChongNuoc || '',
@@ -377,7 +471,8 @@ export default function ProductsPage() {
       showToast('error', 'Vui lòng nhập tên mẫu đồng hồ.');
       return;
     }
-    if (!productForm.basePrice || Number(productForm.basePrice) <= 0) {
+    const cleanBasePrice = parseCurrencyInput(productForm.basePrice);
+    if (!cleanBasePrice || cleanBasePrice <= 0) {
       showToast('error', 'Vui lòng nhập giá niêm yết hợp lệ.');
       return;
     }
@@ -389,12 +484,13 @@ export default function ProductsPage() {
         slug: productForm.slug.trim() || `watch-${Date.now()}`,
         brandId: productForm.brandId ? Number(productForm.brandId) : null,
         categoryId: productForm.categoryId ? Number(productForm.categoryId) : null,
-        basePrice: Number(productForm.basePrice),
+        basePrice: cleanBasePrice,
         gender: productForm.gender,
         loaiBoMay: productForm.loaiBoMay,
         chatLieuKinh: productForm.chatLieuKinh || null,
         duongKinhMatSo: productForm.duongKinhMatSo ? Number(productForm.duongKinhMatSo) : null,
         beDayMatSo: productForm.beDayMatSo ? Number(productForm.beDayMatSo) : null,
+        khoiLuong: productForm.khoiLuong ? Number(productForm.khoiLuong) : null,
         chatLieuNieng: productForm.chatLieuNieng || null,
         chatLieuDayDeo: productForm.chatLieuDayDeo || null,
         khaNangChongNuoc: productForm.khaNangChongNuoc || null,
@@ -424,7 +520,10 @@ export default function ProductsPage() {
       await fetchData();
     } catch (err: any) {
       console.error('Lỗi lưu sản phẩm:', err);
-      const msg = err.response?.data?.message || err.message || 'Không thể lưu thông tin sản phẩm';
+      let msg = err.response?.data?.message || err.message || 'Không thể lưu thông tin sản phẩm';
+      if (err.response?.status === 409) {
+        msg = 'Dữ liệu (Tên hoặc Slug) đã tồn tại trong hệ thống. Vui lòng kiểm tra lại.';
+      }
       showToast('error', msg);
     } finally {
       setSubmitting(false);
@@ -463,6 +562,8 @@ export default function ProductsPage() {
       price: product.basePrice ? String(product.basePrice) : '',
       costPrice: product.basePrice ? String(Math.round(Number(product.basePrice) * 0.75)) : '',
       mauMatSo: 'Đen Sunray',
+      mauDayDeo: 'Dây Thép Bạc',
+      mauNieng: 'Bạc Silver',
       status: 'active',
     });
     setShowVariantModal(true);
@@ -479,6 +580,8 @@ export default function ProductsPage() {
       price: String(variant.price),
       costPrice: variant.costPrice ? String(variant.costPrice) : '',
       mauMatSo: variant.mauMatSo || '',
+      mauDayDeo: variant.mauDayDeo || '',
+      mauNieng: variant.mauNieng || '',
       status: variant.status || 'active',
     });
     setShowVariantModal(true);
@@ -545,7 +648,9 @@ export default function ProductsPage() {
       showToast('error', 'Vui lòng nhập mã SKU biến thể.');
       return;
     }
-    if (!variantForm.price || Number(variantForm.price) <= 0) {
+    const cleanPrice = parseCurrencyInput(variantForm.price);
+    const cleanCostPrice = variantForm.costPrice ? parseCurrencyInput(variantForm.costPrice) : null;
+    if (!cleanPrice || cleanPrice <= 0) {
       showToast('error', 'Vui lòng nhập giá bán của biến thể.');
       return;
     }
@@ -554,9 +659,11 @@ export default function ProductsPage() {
       setSubmitting(true);
       const payload = {
         sku: variantForm.sku.trim().toUpperCase(),
-        price: Number(variantForm.price),
-        costPrice: variantForm.costPrice ? Number(variantForm.costPrice) : null,
+        price: cleanPrice,
+        costPrice: cleanCostPrice,
         mauMatSo: variantForm.mauMatSo || null,
+        mauDayDeo: variantForm.mauDayDeo || null,
+        mauNieng: variantForm.mauNieng || null,
         status: variantForm.status,
         images: variantImages,
       };
@@ -605,6 +712,64 @@ export default function ProductsPage() {
       showToast('error', msg);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Tải file mẫu Excel
+  const handleDownloadSerialTemplate = async () => {
+    try {
+      const res = await apiClient.get('/serials/template', {
+        responseType: 'blob',
+      });
+      const blob = new Blob([res.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'BRU_WATCH_Serial_Template.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      showToast('success', 'Đã tải xuống file Excel mẫu thành công.');
+    } catch (err: any) {
+      console.error('Lỗi tải file mẫu:', err);
+      showToast('error', 'Không thể tải file Excel mẫu. Vui lòng thử lại.');
+    }
+  };
+
+  // Upload file Excel serials
+  const handleImportSerialsExcel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!excelFile) {
+      showToast('error', 'Vui lòng chọn file Excel (.xlsx / .xls / .csv) để nhập.');
+      return;
+    }
+
+    try {
+      setImportingExcel(true);
+      setImportResult(null);
+      const formData = new FormData();
+      formData.append('file', excelFile);
+
+      const res = await apiClient.post('/serials/import-excel', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      if (res.data?.success) {
+        setImportResult(res.data.data);
+        showToast('success', res.data.message || 'Đã nhập danh sách số Serial thành công!');
+        await fetchData();
+      }
+    } catch (err: any) {
+      console.error('Lỗi upload Excel serials:', err);
+      const msg = err.response?.data?.message || err.message || 'Không thể xử lý file Excel';
+      showToast('error', msg);
+    } finally {
+      setImportingExcel(false);
     }
   };
 
@@ -690,15 +855,30 @@ export default function ProductsPage() {
             </button>
           </div>
 
-          {canManageProducts && (
-            <button
-              onClick={openCreateProductModal}
-              className="w-full sm:w-auto px-4 py-2.5 rounded-lg bg-[#00844e] hover:bg-[#009b5c] text-white text-xs font-medium flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/40 border border-emerald-400/25 transition-all cursor-pointer"
-            >
-              <FontAwesomeIcon icon={faPlus} className="text-xs" />
-              Nhập Mẫu Đồng Hồ Mới
-            </button>
-          )}
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            {canManageProducts && (
+              <>
+                <button
+                  onClick={() => {
+                    setExcelFile(null);
+                    setImportResult(null);
+                    setShowSerialImportModal(true);
+                  }}
+                  className="w-full sm:w-auto px-3.5 py-2.5 rounded-lg bg-[#d4af37]/15 hover:bg-[#d4af37]/25 text-[#d4af37] text-xs font-medium flex items-center justify-center gap-2 border border-[#d4af37]/35 shadow-sm transition-all cursor-pointer"
+                >
+                  <FontAwesomeIcon icon={faFileExcel} className="text-xs text-emerald-400" />
+                  Nhập Serial Excel
+                </button>
+                <button
+                  onClick={openCreateProductModal}
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-lg bg-[#00844e] hover:bg-[#009b5c] text-white text-xs font-medium flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/40 border border-emerald-400/25 transition-all cursor-pointer"
+                >
+                  <FontAwesomeIcon icon={faPlus} className="text-xs" />
+                  Nhập Mẫu Đồng Hồ Mới
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Thống kê nhanh */}
@@ -833,11 +1013,17 @@ export default function ProductsPage() {
                     </div>
 
                     {/* Thông số kỹ thuật nhanh */}
-                    <div className="grid grid-cols-2 gap-2 p-2.5 rounded-lg bg-[#040806]/60 border border-white/[0.04] text-[11px] mb-3">
+                    <div className="grid grid-cols-2 gap-2 p-2.5 rounded-lg bg-[#040806]/60 border border-white/[0.04] text-[11px] mb-2">
                       <div>
                         <span className="text-stone-500 block text-[10px]">Kính:</span>
                         <span className="text-stone-300 truncate block">
-                          {product.chatLieuKinh || 'Sapphire'}
+                          {product.chatLieuKinh || 'Kính Sapphire'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-stone-500 block text-[10px]">Niềng:</span>
+                        <span className="text-stone-300 truncate block">
+                          {product.chatLieuNieng || 'Thép không gỉ 316L'}
                         </span>
                       </div>
                       <div>
@@ -849,22 +1035,32 @@ export default function ProductsPage() {
                       <div>
                         <span className="text-stone-500 block text-[10px]">Chống nước:</span>
                         <span className="text-stone-300 truncate block">
-                          {product.khaNangChongNuoc || '5 ATM'}
+                          {product.khaNangChongNuoc || '10 ATM'}
                         </span>
                       </div>
                       <div>
-                        <span className="text-stone-500 block text-[10px]">Đường kính:</span>
+                        <span className="text-stone-500 block text-[10px]">Đường kính / Dày:</span>
                         <span className="text-stone-300 truncate block">
-                          {product.duongKinhMatSo ? `${product.duongKinhMatSo} mm` : 'Tiêu chuẩn'}
+                          {product.duongKinhMatSo ? `${product.duongKinhMatSo} mm` : '40 mm'} / {product.beDayMatSo ? `${product.beDayMatSo} mm` : '10.5 mm'}
                         </span>
                       </div>
                       <div>
-                        <span className="text-stone-500 block text-[10px]">Bảo hành:</span>
+                        <span className="text-stone-500 block text-[10px]">Khối lượng:</span>
                         <span className="text-stone-300 truncate block">
-                          {product.warrantyMonths} tháng
+                          {product.khoiLuong ? `${product.khoiLuong} g` : '145 g'}
                         </span>
                       </div>
                     </div>
+
+                    {/* Nút Xem Chi Tiết Bảng Thông Số */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedProductForSpecs(product)}
+                      className="w-full py-1.5 px-2.5 mb-3 rounded-lg bg-white/[0.03] hover:bg-[#d4af37]/15 text-stone-300 hover:text-[#d4af37] border border-white/[0.06] hover:border-[#d4af37]/35 text-[11px] flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    >
+                      <FontAwesomeIcon icon={faTableList} className="text-[#d4af37] text-[10px]" />
+                      Bảng Thông Số Chi Tiết
+                    </button>
 
                     {/* Danh sách Tính Năng (Features) */}
                     {product.features && product.features.length > 0 && (
@@ -932,6 +1128,9 @@ export default function ProductsPage() {
                                     >
                                       {v.status === 'active' ? '• Mở bán' : '• Ẩn'}
                                     </span>
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                                      Sẵn bán: {v.serialNumbers?.filter((s: any) => s.status === 'available').length || 0} seri
+                                    </span>
                                   </div>
                                   <div className="flex items-center gap-2">
                                     <span className="font-mono text-stone-200 font-medium">
@@ -957,9 +1156,11 @@ export default function ProductsPage() {
                                     )}
                                   </div>
                                 </div>
-                                <div className="flex items-center justify-between text-[10px] text-stone-400">
+                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-stone-400">
                                   <span>Mặt: <strong className="text-stone-300 font-normal">{v.mauMatSo || 'Mặt tiêu chuẩn'}</strong></span>
-                                  <span>Giá riêng: <strong className="text-amber-200/90 font-medium">{Number(v.price).toLocaleString('vi-VN')} ₫</strong></span>
+                                  {v.mauNieng && <span>Niềng: <strong className="text-[#d4af37] font-normal">{v.mauNieng}</strong></span>}
+                                  {v.mauDayDeo && <span>Dây: <strong className="text-stone-300 font-normal">{v.mauDayDeo}</strong></span>}
+                                  <span>Giá: <strong className="text-amber-200/90 font-medium">{Number(v.price).toLocaleString('vi-VN')} ₫</strong></span>
                                 </div>
                                 {v.images && v.images.length > 0 && (
                                   <div className="flex items-center gap-1.5 pt-1.5 border-t border-white/[0.04]">
@@ -1102,17 +1303,20 @@ export default function ProductsPage() {
                       Giá Niêm Yết Gốc (VNĐ) <span className="text-red-400">*</span>
                     </label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       required
-                      min="0"
-                      step="1000"
-                      value={productForm.basePrice}
-                      onChange={(e) =>
-                        setProductForm((prev) => ({ ...prev, basePrice: e.target.value }))
-                      }
-                      placeholder="VD: 18500000"
+                      value={formatCurrencyInput(productForm.basePrice)}
+                      onChange={(e) => {
+                        const rawVal = e.target.value.replace(/\D/g, '');
+                        setProductForm((prev) => ({ ...prev, basePrice: rawVal }));
+                      }}
+                      placeholder="VD: 123.456.789"
                       className="w-full px-3 py-2 bg-[#030604] rounded-lg border border-white/[0.1] text-xs text-amber-200 focus:outline-none focus:border-[#d4af37] font-mono font-semibold"
                     />
+                    <span className="text-[10px] text-stone-500 mt-1 block">
+                      Tự động phân tách dấu chấm (VD: 123.456.789 ₫), hỗ trợ mọi mức giá lẻ.
+                    </span>
                   </div>
 
                   {/* Thương hiệu */}
@@ -1152,11 +1356,22 @@ export default function ProductsPage() {
                     >
                       <option value="">-- Chọn danh mục --</option>
                       {categories.map((c) => (
-                        <option key={c.id} value={String(c.id)}>
-                          {c.name}
-                        </option>
+                        <React.Fragment key={c.id}>
+                          <option value={String(c.id)} className="font-semibold text-[#d4af37] bg-[#0c1610]">
+                            📁 {c.name} (Danh mục gốc)
+                          </option>
+                          {c.children && c.children.length > 0 &&
+                            c.children.map((child) => (
+                              <option key={child.id} value={String(child.id)} className="text-stone-300 bg-[#070e0a]">
+                                &nbsp;&nbsp;&nbsp;&nbsp;↳ {child.name}
+                              </option>
+                            ))}
+                        </React.Fragment>
                       ))}
                     </select>
+                    <span className="text-[10px] text-stone-500 mt-1 block">
+                      Hỗ trợ chọn trực tiếp danh mục gốc (📁) hoặc danh mục con phân cấp (↳).
+                    </span>
                   </div>
 
                   {/* Giới tính */}
@@ -1206,33 +1421,73 @@ export default function ProductsPage() {
                   </div>
 
                   {/* Chất liệu kính */}
-                  <div>
-                    <label className="block text-xs font-medium text-stone-300 mb-1">Mặt Kính</label>
+                  <div className="sm:col-span-2 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-medium text-stone-300">
+                        Mặt Kính (Chat_Lieu_Kinh)
+                      </label>
+                      <span className="text-[10px] text-stone-500">Chọn nhanh gợi ý hoặc tự nhập tay</span>
+                    </div>
                     <input
                       type="text"
                       value={productForm.chatLieuKinh}
                       onChange={(e) =>
                         setProductForm((prev) => ({ ...prev, chatLieuKinh: e.target.value }))
                       }
-                      placeholder="VD: Sapphire nguyên khối chống lóa"
+                      placeholder="VD: Kính Sapphire nguyên khối chống phản chiếu"
                       className="w-full px-3 py-2 bg-[#030604] rounded-lg border border-white/[0.1] text-xs text-stone-300 focus:outline-none focus:border-[#d4af37]"
                     />
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {SUGGESTED_GLASS.map((glass) => (
+                        <button
+                          key={glass}
+                          type="button"
+                          onClick={() => setProductForm((prev) => ({ ...prev, chatLieuKinh: glass }))}
+                          className={`px-2 py-0.5 rounded text-[10px] border transition-all cursor-pointer ${
+                            productForm.chatLieuKinh === glass
+                              ? 'bg-[#d4af37]/20 text-[#d4af37] border-[#d4af37]/60 font-medium'
+                              : 'bg-white/[0.03] text-stone-400 hover:text-white border-white/[0.08] hover:border-white/[0.2]'
+                          }`}
+                        >
+                          {glass}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Niềng */}
-                  <div>
-                    <label className="block text-xs font-medium text-stone-300 mb-1">
-                      Chất Liệu Niềng (Bezel)
-                    </label>
+                  <div className="sm:col-span-2 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-medium text-stone-300">
+                        Chất Liệu Niềng (Bezel)
+                      </label>
+                      <span className="text-[10px] text-stone-500">Chọn nhanh gợi ý hoặc tự nhập tay</span>
+                    </div>
                     <input
                       type="text"
                       value={productForm.chatLieuNieng}
                       onChange={(e) =>
                         setProductForm((prev) => ({ ...prev, chatLieuNieng: e.target.value }))
                       }
-                      placeholder="VD: Thép không gỉ 316L mạ PVD"
+                      placeholder="VD: Thép không gỉ 316L, Ceramic chống trầy..."
                       className="w-full px-3 py-2 bg-[#030604] rounded-lg border border-white/[0.1] text-xs text-stone-300 focus:outline-none focus:border-[#d4af37]"
                     />
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {SUGGESTED_BEZEL_MATERIALS.map((bezel) => (
+                        <button
+                          key={bezel}
+                          type="button"
+                          onClick={() => setProductForm((prev) => ({ ...prev, chatLieuNieng: bezel }))}
+                          className={`px-2 py-0.5 rounded text-[10px] border transition-all cursor-pointer ${
+                            productForm.chatLieuNieng === bezel
+                              ? 'bg-[#d4af37]/20 text-[#d4af37] border-[#d4af37]/60 font-medium'
+                              : 'bg-white/[0.03] text-stone-400 hover:text-white border-white/[0.08] hover:border-white/[0.2]'
+                          }`}
+                        >
+                          {bezel}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Chất liệu Dây Đeo */}
@@ -1267,8 +1522,8 @@ export default function ProductsPage() {
                     </div>
                   </div>
 
-                  {/* Đường kính & Bề dày */}
-                  <div className="grid grid-cols-2 gap-2">
+                  {/* Đường kính, Bề dày & Khối lượng */}
+                  <div className="grid grid-cols-3 gap-2">
                     <div>
                       <label className="block text-xs font-medium text-stone-300 mb-1">
                         Đường Kính (mm)
@@ -1296,6 +1551,21 @@ export default function ProductsPage() {
                           setProductForm((prev) => ({ ...prev, beDayMatSo: e.target.value }))
                         }
                         placeholder="10.5"
+                        className="w-full px-3 py-2 bg-[#030604] rounded-lg border border-white/[0.1] text-xs text-stone-300 focus:outline-none focus:border-[#d4af37]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-stone-300 mb-1">
+                        Khối Lượng (g)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        value={productForm.khoiLuong}
+                        onChange={(e) =>
+                          setProductForm((prev) => ({ ...prev, khoiLuong: e.target.value }))
+                        }
+                        placeholder="145.0"
                         className="w-full px-3 py-2 bg-[#030604] rounded-lg border border-white/[0.1] text-xs text-stone-300 focus:outline-none focus:border-[#d4af37]"
                       />
                     </div>
@@ -1562,9 +1832,10 @@ export default function ProductsPage() {
 
         {/* MODAL: Thêm / Sửa Biến Thể (Product Variant) */}
         {showVariantModal && targetProduct && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-            <div className="luxury-card rounded-2xl w-full max-w-lg border border-[#d4af37]/30 bg-[#070e0a] shadow-2xl p-6 text-stone-200">
-              <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+            <div className="luxury-card rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col border border-[#d4af37]/30 bg-[#070e0a] shadow-2xl overflow-hidden text-stone-200">
+              {/* Header cố định trên đỉnh */}
+              <div className="flex items-center justify-between p-4 sm:p-5 border-b border-white/[0.08] shrink-0 bg-[#070e0a]">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
                     <FontAwesomeIcon icon={editingVariant ? faPenToSquare : faBoxesStacked} className="text-sm" />
@@ -1581,83 +1852,118 @@ export default function ProductsPage() {
                   </div>
                 </div>
                 <button
+                  type="button"
                   onClick={() => {
                     setShowVariantModal(false);
                     setEditingVariant(null);
                     setTargetProduct(null);
                     setVariantImages([]);
                   }}
-                  className="p-2 rounded-lg text-stone-400 hover:text-white hover:bg-white/[0.06] transition-colors"
+                  className="p-2 rounded-lg text-stone-400 hover:text-white hover:bg-white/[0.06] transition-colors cursor-pointer"
                 >
                   <FontAwesomeIcon icon={faXmark} className="text-sm" />
                 </button>
               </div>
 
-              <form onSubmit={handleSaveVariant} className="mt-5 space-y-4">
-                {/* SKU */}
-                <div>
-                  <label className="block text-xs font-medium text-stone-300 mb-1">
-                    Mã SKU Duy Nhất <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={variantForm.sku}
-                    onChange={(e) =>
-                      setVariantForm((prev) => ({ ...prev, sku: e.target.value.toUpperCase() }))
-                    }
-                    placeholder="VD: TIS-PRX-ICEBLUE"
-                    className="w-full px-3 py-2 bg-[#030604] rounded-lg border border-white/[0.1] text-xs text-emerald-400 font-mono font-semibold focus:outline-none focus:border-[#d4af37]"
-                  />
-                  <span className="text-[10px] text-stone-500 mt-1 block">
-                    Mã SKU phải là duy nhất trên toàn hệ thống CSDL MySQL.
-                  </span>
+              {/* Form body cuộn mượt mà bên trong, không bao giờ tràn màn hình */}
+              <form id="variant-form" onSubmit={handleSaveVariant} className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
+                {/* Hàng 1: SKU & Trạng thái */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-stone-300 mb-1">
+                      Mã SKU Duy Nhất <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={variantForm.sku}
+                      onChange={(e) =>
+                        setVariantForm((prev) => ({ ...prev, sku: e.target.value.toUpperCase() }))
+                      }
+                      placeholder="VD: TIS-PRX-ICEBLUE"
+                      className="w-full px-3 py-2 bg-[#030604] rounded-lg border border-white/[0.1] text-xs text-emerald-400 font-mono font-semibold focus:outline-none focus:border-[#d4af37]"
+                    />
+                    <span className="text-[10px] text-stone-500 mt-1 block">
+                      Mã định danh duy nhất trên toàn hệ thống MySQL.
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-stone-300 mb-1">
+                      Trạng Thái Biến Thể
+                    </label>
+                    <select
+                      value={variantForm.status}
+                      onChange={(e) =>
+                        setVariantForm((prev) => ({
+                          ...prev,
+                          status: e.target.value as 'active' | 'hidden',
+                        }))
+                      }
+                      aria-label="Chọn trạng thái biến thể"
+                      className="w-full px-3 py-2 bg-[#030604] rounded-lg border border-white/[0.1] text-xs text-stone-300 focus:outline-none focus:border-[#d4af37] cursor-pointer"
+                    >
+                      <option value="active">Kích hoạt mở bán (Active)</option>
+                      <option value="hidden">Ẩn tạm thời (Hidden)</option>
+                    </select>
+                    <span className="text-[10px] text-stone-500 mt-1 block">
+                      Cho phép khách hàng xem và mua SKU này trên web.
+                    </span>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Giá bán */}
+                {/* Hàng 2: Giá bán & Giá vốn với định dạng chấm 3 chữ số */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-stone-300 mb-1">
                       Giá Bán Ra (VNĐ) <span className="text-red-400">*</span>
                     </label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       required
-                      min="0"
-                      step="1000"
-                      value={variantForm.price}
-                      onChange={(e) =>
-                        setVariantForm((prev) => ({ ...prev, price: e.target.value }))
-                      }
-                      placeholder="18500000"
+                      value={formatCurrencyInput(variantForm.price)}
+                      onChange={(e) => {
+                        const rawVal = e.target.value.replace(/\D/g, '');
+                        setVariantForm((prev) => ({ ...prev, price: rawVal }));
+                      }}
+                      placeholder="VD: 123.456.789"
                       className="w-full px-3 py-2 bg-[#030604] rounded-lg border border-white/[0.1] text-xs text-amber-200 font-mono font-semibold focus:outline-none focus:border-[#d4af37]"
                     />
+                    <span className="text-[10px] text-stone-500 mt-1 block">
+                      Tự động thêm dấu . mỗi 3 chữ số (VD: 123.456.789 ₫)
+                    </span>
                   </div>
 
-                  {/* Giá vốn */}
                   <div>
                     <label className="block text-xs font-medium text-stone-300 mb-1">
                       Giá Vốn Nhập (VNĐ)
                     </label>
                     <input
-                      type="number"
-                      min="0"
-                      step="1000"
-                      value={variantForm.costPrice}
-                      onChange={(e) =>
-                        setVariantForm((prev) => ({ ...prev, costPrice: e.target.value }))
-                      }
-                      placeholder="13500000"
+                      type="text"
+                      inputMode="numeric"
+                      value={formatCurrencyInput(variantForm.costPrice)}
+                      onChange={(e) => {
+                        const rawVal = e.target.value.replace(/\D/g, '');
+                        setVariantForm((prev) => ({ ...prev, costPrice: rawVal }));
+                      }}
+                      placeholder="VD: 90.000.000"
                       className="w-full px-3 py-2 bg-[#030604] rounded-lg border border-white/[0.1] text-xs text-stone-300 font-mono focus:outline-none focus:border-[#d4af37]"
                     />
+                    <span className="text-[10px] text-stone-500 mt-1 block">
+                      Giá vốn nhập nội bộ tính toán biên lợi nhuận.
+                    </span>
                   </div>
                 </div>
 
-                {/* Màu mặt số */}
+                {/* Hàng 3: Màu mặt số */}
                 <div>
-                  <label className="block text-xs font-medium text-stone-300 mb-1">
-                    Màu Sắc Mặt Số (Mau_Mat_So)
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-medium text-stone-300">
+                      Màu Sắc Mặt Số (Mau_Mat_So)
+                    </label>
+                    <span className="text-[10px] text-stone-500">Nhập tay hoặc chọn nhanh bên dưới</span>
+                  </div>
                   <input
                     type="text"
                     value={variantForm.mauMatSo}
@@ -1667,7 +1973,6 @@ export default function ProductsPage() {
                     placeholder="VD: Xanh Ice Blue, Mặt đen Sunray, Trắng Bạc..."
                     className="w-full px-3 py-2 bg-[#030604] rounded-lg border border-white/[0.1] text-xs text-stone-300 focus:outline-none focus:border-[#d4af37]"
                   />
-                  {/* Tag gợi ý nhanh màu sắc mặt số */}
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {SUGGESTED_DIAL_COLORS.map((item) => (
                       <button
@@ -1690,10 +1995,83 @@ export default function ProductsPage() {
                   </div>
                 </div>
 
-                {/* Bộ sưu tập hình ảnh biến thể */}
+                {/* Hàng 4: Màu Niềng & Màu Dây Đeo */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-xs font-medium text-stone-300 mb-1">
+                      Màu Niềng (Mau_Nieng)
+                    </label>
+                    <input
+                      type="text"
+                      value={variantForm.mauNieng}
+                      onChange={(e) =>
+                        setVariantForm((prev) => ({ ...prev, mauNieng: e.target.value }))
+                      }
+                      placeholder="VD: Bạc Silver, Vàng Gold 18K..."
+                      className="w-full px-3 py-2 bg-[#030604] rounded-lg border border-white/[0.1] text-xs text-stone-300 focus:outline-none focus:border-[#d4af37]"
+                    />
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {SUGGESTED_BEZEL_COLORS.slice(0, 5).map((item) => (
+                        <button
+                          key={item.label}
+                          type="button"
+                          onClick={() => setVariantForm((prev) => ({ ...prev, mauNieng: item.label }))}
+                          className={`px-1.5 py-0.5 rounded text-[9px] border flex items-center gap-1 transition-all cursor-pointer ${
+                            variantForm.mauNieng === item.label
+                              ? 'bg-[#d4af37]/20 text-[#d4af37] border-[#d4af37]/60'
+                              : 'bg-white/[0.03] text-stone-400 hover:text-white border-white/[0.08]'
+                          }`}
+                        >
+                          <span
+                            className="w-1.5 h-1.5 rounded-full border border-white/20"
+                            style={{ backgroundColor: item.color }}
+                          />
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-stone-300 mb-1">
+                      Màu Dây Đeo (Mau_Day_Deo)
+                    </label>
+                    <input
+                      type="text"
+                      value={variantForm.mauDayDeo}
+                      onChange={(e) =>
+                        setVariantForm((prev) => ({ ...prev, mauDayDeo: e.target.value }))
+                      }
+                      placeholder="VD: Dây Thép Bạc, Da Nâu..."
+                      className="w-full px-3 py-2 bg-[#030604] rounded-lg border border-white/[0.1] text-xs text-stone-300 focus:outline-none focus:border-[#d4af37]"
+                    />
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {SUGGESTED_STRAP_COLORS.slice(0, 5).map((item) => (
+                        <button
+                          key={item.label}
+                          type="button"
+                          onClick={() => setVariantForm((prev) => ({ ...prev, mauDayDeo: item.label }))}
+                          className={`px-1.5 py-0.5 rounded text-[9px] border flex items-center gap-1 transition-all cursor-pointer ${
+                            variantForm.mauDayDeo === item.label
+                              ? 'bg-[#d4af37]/20 text-[#d4af37] border-[#d4af37]/60'
+                              : 'bg-white/[0.03] text-stone-400 hover:text-white border-white/[0.08]'
+                          }`}
+                        >
+                          <span
+                            className="w-1.5 h-1.5 rounded-full border border-white/20"
+                            style={{ backgroundColor: item.color }}
+                          />
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Hàng 5: Bộ sưu tập hình ảnh biến thể */}
                 <div className="pt-2 border-t border-white/[0.06]">
-                  <label className="block text-xs font-medium text-stone-300 mb-1.5 flex items-center justify-between">
-                    <span className="flex items-center gap-1.5">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="flex items-center gap-1.5 text-xs font-medium text-stone-300">
                       <FontAwesomeIcon icon={faImage} className="text-[#d4af37] text-xs" />
                       Bộ Sưu Tập Hình Ảnh Biến Thể ({variantImages.length} ảnh)
                     </span>
@@ -1703,7 +2081,7 @@ export default function ProductsPage() {
                         Đang tải ảnh lên...
                       </span>
                     )}
-                  </label>
+                  </div>
 
                   <input
                     ref={variantFileInputRef}
@@ -1715,8 +2093,8 @@ export default function ProductsPage() {
                     id="variant-images-upload-input"
                   />
 
-                  {/* Lưới hiển thị các ảnh đã tải */}
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 mb-2.5">
+                  {/* Lưới hiển thị các ảnh gọn gàng hơn */}
+                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 mb-2">
                     {variantImages.map((imgUrl, idx) => (
                       <div
                         key={idx}
@@ -1728,8 +2106,8 @@ export default function ProductsPage() {
                           className="w-full h-full object-cover"
                         />
                         {idx === 0 && (
-                          <span className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-[#d4af37]/90 text-black text-[9px] font-bold flex items-center gap-1 shadow">
-                            <FontAwesomeIcon icon={faStar} className="text-[8px]" />
+                          <span className="absolute top-1 left-1 px-1 py-0.5 rounded bg-[#d4af37]/90 text-black text-[8px] font-bold flex items-center gap-0.5 shadow">
+                            <FontAwesomeIcon icon={faStar} className="text-[7px]" />
                             Chính
                           </span>
                         )}
@@ -1737,14 +2115,13 @@ export default function ProductsPage() {
                           type="button"
                           onClick={() => handleRemoveVariantImage(idx)}
                           title="Xóa ảnh này khỏi biến thể"
-                          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/75 hover:bg-red-600 text-stone-300 hover:text-white flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-all cursor-pointer shadow"
+                          className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/75 hover:bg-red-600 text-stone-300 hover:text-white flex items-center justify-center text-[9px] opacity-0 group-hover:opacity-100 transition-all cursor-pointer shadow"
                         >
                           <FontAwesomeIcon icon={faXmark} />
                         </button>
                       </div>
                     ))}
 
-                    {/* Nút thêm ảnh */}
                     <button
                       type="button"
                       disabled={uploadingVariantImages}
@@ -1752,73 +2129,54 @@ export default function ProductsPage() {
                       className="aspect-square rounded-lg bg-[#030604] border border-dashed border-[#d4af37]/35 hover:border-[#d4af37] hover:bg-[#d4af37]/10 flex flex-col items-center justify-center gap-1 text-[#d4af37] transition-all cursor-pointer group disabled:opacity-50"
                     >
                       {uploadingVariantImages ? (
-                        <FontAwesomeIcon icon={faSpinner} className="fa-spin text-base" />
+                        <FontAwesomeIcon icon={faSpinner} className="fa-spin text-sm" />
                       ) : (
                         <>
-                          <FontAwesomeIcon icon={faPlus} className="text-base group-hover:scale-110 transition-transform" />
-                          <span className="text-[10px] font-medium text-stone-300">Tải ảnh lên</span>
+                          <FontAwesomeIcon icon={faPlus} className="text-sm group-hover:scale-110 transition-transform" />
+                          <span className="text-[9px] font-medium text-stone-300">Tải ảnh</span>
                         </>
                       )}
                     </button>
                   </div>
                   <span className="text-[10px] text-stone-500 block">
-                    Bạn có thể chọn tải lên nhiều ảnh từ máy tính cùng lúc. Ảnh đầu tiên sẽ tự động làm ảnh đại diện chính của biến thể.
+                    Tải nhiều ảnh cùng lúc từ máy tính. Ảnh đầu tiên làm ảnh đại diện chính.
                   </span>
                 </div>
-
-                {/* Trạng thái */}
-                <div>
-                  <label className="block text-xs font-medium text-stone-300 mb-1">
-                    Trạng Thái Biến Thể
-                  </label>
-                  <select
-                    value={variantForm.status}
-                    onChange={(e) =>
-                      setVariantForm((prev) => ({
-                        ...prev,
-                        status: e.target.value as 'active' | 'hidden',
-                      }))
-                    }
-                    aria-label="Chọn trạng thái biến thể"
-                    className="w-full px-3 py-2 bg-[#030604] rounded-lg border border-white/[0.1] text-xs text-stone-300 focus:outline-none focus:border-[#d4af37] cursor-pointer"
-                  >
-                    <option value="active">Kích hoạt mở bán (Active)</option>
-                    <option value="hidden">Ẩn tạm thời (Hidden)</option>
-                  </select>
-                </div>
-
-                <div className="pt-4 border-t border-white/[0.08] flex items-center justify-end gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowVariantModal(false);
-                      setEditingVariant(null);
-                      setTargetProduct(null);
-                      setVariantImages([]);
-                    }}
-                    className="px-4 py-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-stone-300 text-xs transition-colors"
-                  >
-                    Hủy Bỏ
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={submitting}
-                    className="px-5 py-2 rounded-lg bg-[#00844e] hover:bg-[#009b5c] text-white text-xs font-medium flex items-center gap-2 shadow-lg disabled:opacity-50 transition-all cursor-pointer"
-                  >
-                    {submitting ? (
-                      <>
-                        <FontAwesomeIcon icon={faSpinner} className="fa-spin text-xs" />
-                        Đang Ghi Vào MySQL...
-                      </>
-                    ) : (
-                      <>
-                        <FontAwesomeIcon icon={faCheck} className="text-xs" />
-                        {editingVariant ? 'Cập Nhật Biến Thể' : 'Thêm Biến Thể'}
-                      </>
-                    )}
-                  </button>
-                </div>
               </form>
+
+              {/* Footer cố định dưới đáy: Luôn luôn hiển thị đầy đủ các nút bấm */}
+              <div className="p-4 border-t border-white/[0.08] bg-[#040806] flex items-center justify-end gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowVariantModal(false);
+                    setEditingVariant(null);
+                    setTargetProduct(null);
+                    setVariantImages([]);
+                  }}
+                  className="px-4 py-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-stone-300 text-xs transition-colors cursor-pointer"
+                >
+                  Hủy Bỏ
+                </button>
+                <button
+                  type="submit"
+                  form="variant-form"
+                  disabled={submitting}
+                  className="px-5 py-2 rounded-lg bg-[#00844e] hover:bg-[#009b5c] text-white text-xs font-semibold flex items-center gap-2 shadow-lg disabled:opacity-50 transition-all cursor-pointer"
+                >
+                  {submitting ? (
+                    <>
+                      <FontAwesomeIcon icon={faSpinner} className="fa-spin text-xs" />
+                      Đang Ghi Vào MySQL...
+                    </>
+                  ) : (
+                    <>
+                      <FontAwesomeIcon icon={faCheck} className="text-xs" />
+                      {editingVariant ? 'Cập Nhật Biến Thể' : 'Thêm Biến Thể'}
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -1941,6 +2299,381 @@ export default function ProductsPage() {
                   )}
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+        {/* MODAL: Bảng Thông Số Kỹ Thuật Đầy Đủ (Table View) */}
+        {selectedProductForSpecs && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+            <div className="luxury-card rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto border border-[#d4af37]/40 bg-[#070e0a] shadow-2xl p-6 text-stone-200">
+              <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#d4af37]/15 border border-[#d4af37]/30 flex items-center justify-center text-[#d4af37]">
+                    <FontAwesomeIcon icon={faTableList} className="text-base" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white flex items-center gap-2">
+                      <span>Bảng Thông Số Kỹ Thuật Chi Tiết</span>
+                      <span className="text-xs px-2 py-0.5 rounded bg-[#d4af37]/15 text-[#d4af37] border border-[#d4af37]/30 font-mono">
+                        #{selectedProductForSpecs.id}
+                      </span>
+                    </h3>
+                    <p className="text-xs text-stone-400">
+                      {selectedProductForSpecs.name} • {selectedProductForSpecs.brand?.name || 'Thương hiệu'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setSelectedProductForSpecs(null)}
+                  className="p-2 rounded-lg text-stone-400 hover:text-white hover:bg-white/[0.06] transition-colors"
+                >
+                  <FontAwesomeIcon icon={faXmark} className="text-sm" />
+                </button>
+              </div>
+
+              <div className="py-4 space-y-5">
+                {/* Bảng thông số chính */}
+                <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-[#030604]">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-white/[0.03] text-stone-400 border-b border-white/[0.06] text-[11px] uppercase tracking-wider">
+                      <tr>
+                        <th className="py-3 px-4 w-1/3">Hạng Mục Thông Số</th>
+                        <th className="py-3 px-4 w-2/3">Quy Chuẩn / Giá Trị Chế Tác</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/[0.04]">
+                      <tr className="hover:bg-white/[0.02]">
+                        <td className="py-2.5 px-4 text-stone-400 font-medium">Tên Mẫu Đồng Hồ</td>
+                        <td className="py-2.5 px-4 text-white font-semibold">{selectedProductForSpecs.name}</td>
+                      </tr>
+                      <tr className="hover:bg-white/[0.02]">
+                        <td className="py-2.5 px-4 text-stone-400 font-medium">Định Danh Đường Dẫn (Slug)</td>
+                        <td className="py-2.5 px-4 font-mono text-emerald-400">/{selectedProductForSpecs.slug}</td>
+                      </tr>
+                      <tr className="hover:bg-white/[0.02]">
+                        <td className="py-2.5 px-4 text-stone-400 font-medium">Thương Hiệu & Xuất Xứ</td>
+                        <td className="py-2.5 px-4 text-stone-200">
+                          {selectedProductForSpecs.brand?.name || 'BRU_WATCH Exclusive'} 
+                          {selectedProductForSpecs.brand?.country && ` (Xuất xứ ${selectedProductForSpecs.brand.country})`}
+                        </td>
+                      </tr>
+                      <tr className="hover:bg-white/[0.02]">
+                        <td className="py-2.5 px-4 text-stone-400 font-medium">Danh Mục Phân Khúc</td>
+                        <td className="py-2.5 px-4 text-stone-200">{selectedProductForSpecs.category?.name || 'Đồng hồ cao cấp'}</td>
+                      </tr>
+                      <tr className="hover:bg-white/[0.02]">
+                        <td className="py-2.5 px-4 text-stone-400 font-medium">Giá Niêm Yết Tiêu Chuẩn</td>
+                        <td className="py-2.5 px-4 font-mono font-bold text-amber-200 text-sm">
+                          {Number(selectedProductForSpecs.basePrice).toLocaleString('vi-VN')} ₫
+                        </td>
+                      </tr>
+                      <tr className="hover:bg-white/[0.02]">
+                        <td className="py-2.5 px-4 text-stone-400 font-medium">Cỗ Máy Đồng Hồ (Movement)</td>
+                        <td className="py-2.5 px-4 text-stone-200 uppercase font-semibold text-emerald-400">
+                          {selectedProductForSpecs.loaiBoMay || 'Automatic (Cơ tự động)'}
+                        </td>
+                      </tr>
+                      <tr className="hover:bg-white/[0.02] bg-[#d4af37]/[0.02]">
+                        <td className="py-2.5 px-4 text-[#d4af37] font-medium">Chất Liệu Mặt Kính (Glass)</td>
+                        <td className="py-2.5 px-4 text-white font-medium">{selectedProductForSpecs.chatLieuKinh || 'Kính Sapphire nguyên khối chống trầy xước'}</td>
+                      </tr>
+                      <tr className="hover:bg-white/[0.02] bg-[#d4af37]/[0.02]">
+                        <td className="py-2.5 px-4 text-[#d4af37] font-medium">Chất Liệu Niềng (Bezel)</td>
+                        <td className="py-2.5 px-4 text-white font-medium">{selectedProductForSpecs.chatLieuNieng || 'Thép không gỉ 316L Thụy Sĩ'}</td>
+                      </tr>
+                      <tr className="hover:bg-white/[0.02]">
+                        <td className="py-2.5 px-4 text-stone-400 font-medium">Chất Liệu Dây Đeo</td>
+                        <td className="py-2.5 px-4 text-stone-200">{selectedProductForSpecs.chatLieuDayDeo || 'Dây Thép Không Gỉ 316L'}</td>
+                      </tr>
+                      <tr className="hover:bg-white/[0.02]">
+                        <td className="py-2.5 px-4 text-stone-400 font-medium">Khối Lượng Thân Máy (Weight)</td>
+                        <td className="py-2.5 px-4 font-mono font-semibold text-stone-200">
+                          {selectedProductForSpecs.khoiLuong ? `${selectedProductForSpecs.khoiLuong} gram (g)` : '145.0 gram (g)'}
+                        </td>
+                      </tr>
+                      <tr className="hover:bg-white/[0.02]">
+                        <td className="py-2.5 px-4 text-stone-400 font-medium">Đường Kính & Bề Dày</td>
+                        <td className="py-2.5 px-4 font-mono text-stone-200">
+                          Đường kính: {selectedProductForSpecs.duongKinhMatSo || 40.0} mm | Bề dày: {selectedProductForSpecs.beDayMatSo || 10.5} mm
+                        </td>
+                      </tr>
+                      <tr className="hover:bg-white/[0.02]">
+                        <td className="py-2.5 px-4 text-stone-400 font-medium">Khả Năng Kháng Nước</td>
+                        <td className="py-2.5 px-4 text-stone-200">{selectedProductForSpecs.khaNangChongNuoc || '10 ATM (100m)'}</td>
+                      </tr>
+                      <tr className="hover:bg-white/[0.02]">
+                        <td className="py-2.5 px-4 text-stone-400 font-medium">Bảo Hành Chính Hãng</td>
+                        <td className="py-2.5 px-4 text-stone-200">{selectedProductForSpecs.warrantyMonths || 24} Tháng Quốc Tế</td>
+                      </tr>
+                      <tr className="hover:bg-white/[0.02]">
+                        <td className="py-2.5 px-4 text-stone-400 font-medium">Đối Tượng Phù Hợp</td>
+                        <td className="py-2.5 px-4 text-stone-200">
+                          {selectedProductForSpecs.gender === 'male' ? 'Quý Ông (Gentlemen)' : selectedProductForSpecs.gender === 'female' ? 'Quý Cô (Ladies)' : 'Unisex (Đa phong cách)'}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Danh sách biến thể SKU */}
+                <div>
+                  <h4 className="text-xs font-semibold text-stone-300 uppercase tracking-wider mb-2 flex items-center gap-2">
+                    <FontAwesomeIcon icon={faBoxesStacked} className="text-[#d4af37]" />
+                    <span>Danh Sách Biến Thể SKU ({selectedProductForSpecs.variants?.length || 0})</span>
+                  </h4>
+                  <div className="overflow-hidden rounded-xl border border-white/[0.08] bg-[#030604]">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-white/[0.03] text-stone-400 border-b border-white/[0.06] text-[10px] uppercase">
+                        <tr>
+                          <th className="py-2.5 px-3">Mã SKU</th>
+                          <th className="py-2.5 px-3">Mặt Số</th>
+                          <th className="py-2.5 px-3">Màu Niềng</th>
+                          <th className="py-2.5 px-3">Màu Dây</th>
+                          <th className="py-2.5 px-3 text-right">Giá Bán</th>
+                          <th className="py-2.5 px-3">Seri Khả Dụng (Sẵn Bán)</th>
+                          <th className="py-2.5 px-3 text-center">Trạng Thái</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/[0.04]">
+                        {selectedProductForSpecs.variants && selectedProductForSpecs.variants.length > 0 ? (
+                          selectedProductForSpecs.variants.map((v) => (
+                            <tr key={v.id} className="hover:bg-white/[0.02]">
+                              <td className="py-2 px-3 font-mono font-semibold text-emerald-400">{v.sku}</td>
+                              <td className="py-2 px-3 text-stone-300">{v.mauMatSo || 'Mặt tiêu chuẩn'}</td>
+                              <td className="py-2 px-3 text-[#d4af37]">{v.mauNieng || selectedProductForSpecs.chatLieuNieng || 'Tiêu chuẩn'}</td>
+                              <td className="py-2 px-3 text-stone-300">{v.mauDayDeo || selectedProductForSpecs.chatLieuDayDeo || 'Tiêu chuẩn'}</td>
+                              <td className="py-2 px-3 text-right font-mono font-medium text-amber-200">
+                                {Number(v.price).toLocaleString('vi-VN')} ₫
+                              </td>
+                              <td className="py-2 px-3">
+                                {v.serialNumbers && v.serialNumbers.filter((s: any) => s.status === 'available').length > 0 ? (
+                                  <div className="flex flex-wrap gap-1 max-w-[220px]">
+                                    {v.serialNumbers
+                                      .filter((s: any) => s.status === 'available')
+                                      .map((s: any) => (
+                                        <span
+                                          key={s.id}
+                                          title={`Số Serial khả dụng: ${s.serialNumber}`}
+                                          className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-mono text-[9px] font-bold"
+                                        >
+                                          {s.serialNumber}
+                                        </span>
+                                      ))}
+                                  </div>
+                                ) : (
+                                  <span className="text-stone-500 italic text-[10px]">Chưa có seri sẵn sàng</span>
+                                )}
+                              </td>
+                              <td className="py-2 px-3 text-center">
+                                <span className={`px-2 py-0.5 rounded text-[10px] ${v.status === 'active' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-stone-500/15 text-stone-400'}`}>
+                                  {v.status === 'active' ? 'Mở bán' : 'Ẩn'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={6} className="py-4 text-center text-stone-500 italic">
+                              Chưa có biến thể SKU nào cho mẫu này.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-white/[0.08] flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={() => setSelectedProductForSpecs(null)}
+                  className="px-5 py-2 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-stone-200 text-xs font-medium transition-colors cursor-pointer"
+                >
+                  Đóng Bảng Thông Số
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: Nhập Danh Sách Serial Hàng Loạt Bằng Excel */}
+        {showSerialImportModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+            <div className="luxury-card rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto border border-[#d4af37]/40 bg-[#070e0a] shadow-2xl p-6 text-stone-200">
+              <div className="flex items-center justify-between pb-4 border-b border-white/[0.08]">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                    <FontAwesomeIcon icon={faFileExcel} className="text-base" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-white">Nhập Serial Bằng File Excel</h3>
+                    <p className="text-xs text-stone-400">Luồng đồng bộ: Admin đẩy file -&gt; Chuyển giao kho kiểm tra</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowSerialImportModal(false);
+                    setExcelFile(null);
+                    setImportResult(null);
+                  }}
+                  className="p-2 rounded-lg text-stone-400 hover:text-white hover:bg-white/[0.06] transition-colors"
+                >
+                  <FontAwesomeIcon icon={faXmark} className="text-sm" />
+                </button>
+              </div>
+
+              {/* Hướng dẫn quy trình 3 bước */}
+              <div className="mt-4 p-3.5 rounded-xl bg-[#030604] border border-white/[0.06] space-y-2">
+                <span className="text-[11px] font-semibold text-[#d4af37] uppercase tracking-wider flex items-center gap-1.5">
+                  <FontAwesomeIcon icon={faCircleInfo} className="text-xs" />
+                  Quy Trình Quản Lý Serial Hàng Mới
+                </span>
+                <div className="grid grid-cols-3 gap-2 text-[10px] text-stone-400">
+                  <div className="p-2 rounded bg-white/[0.03] border border-white/[0.04]">
+                    <strong className="text-stone-300 block mb-0.5">1. Admin tạo SKU</strong>
+                    Tạo mẫu và các mã biến thể SKU đồng hồ trước trên hệ thống.
+                  </div>
+                  <div className="p-2 rounded bg-[#d4af37]/10 border border-[#d4af37]/25 text-[#d4af37]">
+                    <strong className="text-amber-200 block mb-0.5">2. Tải File Excel</strong>
+                    Admin upload file ghép SKU và số Serial. Trạng thái: Chờ kiểm kho.
+                  </div>
+                  <div className="p-2 rounded bg-emerald-500/10 border border-emerald-500/25 text-emerald-300">
+                    <strong className="text-emerald-200 block mb-0.5">3. Kho Xác Nhận</strong>
+                    Nhân viên kho đối chiếu hàng thực tế & xác nhận mở bán (Available).
+                  </div>
+                </div>
+              </div>
+
+              {/* Tải file mẫu */}
+              <div className="mt-4 p-3.5 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-semibold text-white">Chưa có file mẫu Excel?</h4>
+                  <p className="text-[11px] text-stone-400 mt-0.5">
+                    Tải file mẫu chuẩn đã điền sẵn danh sách SKU đang có trong hệ thống
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleDownloadSerialTemplate}
+                  className="px-3 py-2 rounded-lg bg-[#d4af37]/15 hover:bg-[#d4af37]/25 text-[#d4af37] border border-[#d4af37]/35 text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                >
+                  <FontAwesomeIcon icon={faDownload} className="text-xs" />
+                  Tải File Mẫu (.xlsx)
+                </button>
+              </div>
+
+              {/* Form Upload */}
+              <form onSubmit={handleImportSerialsExcel} className="mt-4 space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-stone-300 mb-1.5">
+                    Chọn File Excel Danh Sách Serial (.xlsx, .xls, .csv) <span className="text-red-400">*</span>
+                  </label>
+                  <div
+                    onClick={() => excelInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
+                      excelFile
+                        ? 'border-emerald-500/60 bg-emerald-500/5 text-emerald-300'
+                        : 'border-white/[0.12] hover:border-[#d4af37]/50 bg-[#040806] text-stone-400 hover:text-stone-200'
+                    }`}
+                  >
+                    <input
+                      ref={excelInputRef}
+                      type="file"
+                      accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] || null;
+                        setExcelFile(file);
+                        setImportResult(null);
+                      }}
+                      className="hidden"
+                    />
+                    <FontAwesomeIcon
+                      icon={excelFile ? faCircleCheck : faCloudArrowUp}
+                      className={`text-3xl mb-2 ${excelFile ? 'text-emerald-400' : 'text-[#d4af37]'}`}
+                    />
+                    {excelFile ? (
+                      <div>
+                        <p className="text-xs font-semibold text-emerald-300">{excelFile.name}</p>
+                        <p className="text-[10px] text-stone-400 mt-0.5">
+                          Kích thước: {(excelFile.size / 1024).toFixed(1)} KB • Bấm để chọn file khác
+                        </p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-xs font-medium">Bấm vào đây để chọn file Excel từ máy tính</p>
+                        <p className="text-[10px] text-stone-500 mt-1">Định dạng hỗ trợ: .xlsx, .xls, .csv</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Kết quả sau khi upload */}
+                {importResult && (
+                  <div className="p-3.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-xs space-y-2 animate-fadeIn">
+                    <div className="flex items-center gap-2 text-emerald-400 font-semibold">
+                      <FontAwesomeIcon icon={faCheckDouble} className="text-sm" />
+                      <span>Nhập Dữ Liệu Thành Công!</span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] pt-1">
+                      <div className="p-2 rounded bg-black/30 border border-white/[0.04]">
+                        <span className="text-stone-400 block text-[10px]">Tổng đọc được:</span>
+                        <span className="font-mono font-bold text-white text-sm">{importResult.totalRows || 0}</span>
+                      </div>
+                      <div className="p-2 rounded bg-black/30 border border-white/[0.04]">
+                        <span className="text-stone-400 block text-[10px]">Thêm mới:</span>
+                        <span className="font-mono font-bold text-emerald-400 text-sm">+{importResult.createdCount || 0}</span>
+                      </div>
+                      <div className="p-2 rounded bg-black/30 border border-white/[0.04]">
+                        <span className="text-stone-400 block text-[10px]">Cập nhật:</span>
+                        <span className="font-mono font-bold text-sky-400 text-sm">{importResult.updatedCount || 0}</span>
+                      </div>
+                      <div className="p-2 rounded bg-black/30 border border-white/[0.04]">
+                        <span className="text-stone-400 block text-[10px]">Bỏ qua/Lỗi:</span>
+                        <span className="font-mono font-bold text-amber-300 text-sm">{importResult.errorsCount || 0}</span>
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-stone-300 pt-1 leading-relaxed">
+                      Toàn bộ số Serial trên đã được chuyển sang trạng thái{' '}
+                      <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono font-semibold">
+                        pending_warehouse_check (Chờ kiểm kho)
+                      </span>
+                      . Vui lòng thông báo nhân viên kho tiến hành đối chiếu tại trang <strong>Kiểm Kho & Serial</strong>.
+                    </p>
+                  </div>
+                )}
+
+                <div className="pt-3 border-t border-white/[0.08] flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowSerialImportModal(false);
+                      setExcelFile(null);
+                      setImportResult(null);
+                    }}
+                    className="px-4 py-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] text-stone-300 text-xs transition-colors cursor-pointer"
+                  >
+                    Đóng
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!excelFile || importingExcel}
+                    className="px-5 py-2 rounded-lg bg-[#00844e] hover:bg-[#009b5c] text-white text-xs font-medium flex items-center gap-2 shadow-lg disabled:opacity-50 transition-all cursor-pointer"
+                  >
+                    {importingExcel ? (
+                      <>
+                        <FontAwesomeIcon icon={faSpinner} className="fa-spin text-xs" />
+                        Đang Xử Lý File Excel...
+                      </>
+                    ) : (
+                      <>
+                        <FontAwesomeIcon icon={faCloudArrowUp} className="text-xs" />
+                        Tiến Hành Nhập & Đẩy Kho Kiểm Tra
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

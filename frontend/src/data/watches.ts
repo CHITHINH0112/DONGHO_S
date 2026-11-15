@@ -4,6 +4,8 @@ export interface WatchVariant {
   priceVND: number;
   priceUSD: number;
   mauMatSo?: string;
+  mauDayDeo?: string | null;
+  mauNieng?: string | null;
   images: string[];
   stockCount: number;
 }
@@ -30,6 +32,7 @@ export interface WatchItem {
   specs: {
     diameter: string;
     thickness: string;
+    weight?: string;
     caseMaterial: string;
     bezel: string;
     crystal: string;

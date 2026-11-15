@@ -101,8 +101,8 @@ export default function AccountAddressesPage() {
     showToast("Đã đặt làm địa chỉ bàn giao chính thức.");
   };
 
-  const getTagIcon = (tag: string) => {
-    if (tag === "Văn phòng VIP") return faBuilding;
+  const getTagIcon = (tag?: string) => {
+    if (tag === "Văn phòng VIP" || tag === "Boutique") return faBuilding;
     return faHouse;
   };
 
@@ -118,7 +118,7 @@ export default function AccountAddressesPage() {
               Sổ Địa Chỉ Bàn Giao Bảo Mật
             </h3>
             <p className="text-xs text-muted-foreground font-light mt-0.5">
-              Địa điểm điều phối xe bọc thép chuyên dụng và lực lượng an ninh tháp tùng.
+              Địa chỉ nhận hàng mặc định và thông tin liên hệ của Quý khách.
             </p>
           </div>
           <button
@@ -236,7 +236,7 @@ export default function AccountAddressesPage() {
                   {editingId ? "Cập Nhật Địa Chỉ Bàn Giao" : "Thêm Địa Chỉ Bàn Giao Mới"}
                 </h4>
                 <p className="text-[11px] font-mono text-white/50">
-                  Địa điểm tiếp nhận đồng hồ bằng xe bọc thép
+                  Địa điểm tiếp nhận đồng hồ
                 </p>
               </div>
             </div>

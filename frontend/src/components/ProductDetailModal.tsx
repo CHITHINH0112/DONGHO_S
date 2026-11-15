@@ -350,19 +350,7 @@ export default function ProductDetailModal() {
                   <span>Thêm Vào Giỏ Hàng</span>
                 </button>
 
-                {/* Wishlist */}
-                <button
-                  onClick={() => toggleWishlist(watch.id)}
-                  className="w-12 h-12 rounded-xl border border-[#d4af37]/20 flex items-center justify-center hover:bg-rose-500/10 text-white transition-all cursor-pointer"
-                  title="Yêu thích"
-                  aria-label="Thêm vào yêu thích"
-                >
-                  <FontAwesomeIcon
-                    icon={isFavorited ? faHeart : faHeartRegular}
-                    className={`w-4 h-4 ${isFavorited ? "text-rose-500" : "text-zinc-400"
-                      }`}
-                  />
-                </button>
+                
               </div>
 
               {/* VIP Salon appointment */}
@@ -382,7 +370,7 @@ export default function ProductDetailModal() {
                 </div>
                 <div className="flex flex-col items-center">
                   <FontAwesomeIcon icon={faTruck} className="w-4 h-4 text-[#d4af37] mb-1" />
-                  <span>Xe bọc thép miễn phí</span>
+                  <span>Giao hàng miễn phí</span>
                 </div>
                 <div className="flex flex-col items-center">
                   <FontAwesomeIcon icon={faAward} className="w-4 h-4 text-emerald-400 mb-1" />

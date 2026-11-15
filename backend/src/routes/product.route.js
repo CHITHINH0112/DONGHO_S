@@ -18,12 +18,12 @@ const router = express.Router();
 router.get('/', getProducts);
 router.get('/:idOrSlug', getProductDetail);
 
-// Protected routes (Admin / Warehouse staff)
+// Protected routes (Admin / Manager only)
 router.post(
   '/',
   verifyToken,
   authorizeRoles('admin', 'staff'),
-  authorizePositions('manager', 'warehouse'),
+  authorizePositions('manager'),
   requireFields('name', 'slug', 'basePrice'),
   createProduct
 );
@@ -32,7 +32,7 @@ router.put(
   '/:id',
   verifyToken,
   authorizeRoles('admin', 'staff'),
-  authorizePositions('manager', 'warehouse'),
+  authorizePositions('manager'),
   updateProduct
 );
 
@@ -48,7 +48,7 @@ router.post(
   '/:id/variants',
   verifyToken,
   authorizeRoles('admin', 'staff'),
-  authorizePositions('manager', 'warehouse'),
+  authorizePositions('manager'),
   requireFields('sku', 'price'),
   addProductVariant
 );
@@ -57,7 +57,7 @@ router.put(
   '/:id/variants/:variantId',
   verifyToken,
   authorizeRoles('admin', 'staff'),
-  authorizePositions('manager', 'warehouse'),
+  authorizePositions('manager'),
   updateProductVariant
 );
 

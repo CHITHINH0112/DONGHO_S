@@ -45,12 +45,12 @@ export default function BestSellersSection() {
     };
   }, []);
 
-  const bestSellers =
-    dbWatches.length > 0
-      ? dbWatches.slice(0, 4)
-      : bestSellerIds
-    .map((id) => WATCHES.find((w) => w.id === id))
-    .filter((w): w is WatchItem => Boolean(w));
+  // Chỉ hiển thị sản phẩm thực tế từ Database
+  const bestSellers = dbWatches.slice(0, 4);
+
+  if (bestSellers.length === 0) {
+    return null;
+  }
 
   return (
     <section id="best-sellers" className="py-28 bg-[#fbf9f5] dark:bg-[#050a07] relative overflow-hidden transition-colors duration-400">

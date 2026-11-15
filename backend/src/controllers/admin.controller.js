@@ -20,6 +20,21 @@ export const createStaff = asyncHandler(async (req, res) => {
   });
 });
 
+export const updateStaff = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const staff = await adminService.updateStaff(id, req.body);
+  if (!staff) {
+    return errorResponse(res, {
+      statusCode: 404,
+      message: 'Không tìm thấy tài khoản nhân viên',
+    });
+  }
+  return successResponse(res, {
+    message: 'Cập nhật tài khoản nhân viên thành công',
+    data: staff,
+  });
+});
+
 // Ca thu ngân
 export const openShift = asyncHandler(async (req, res) => {
   const cashierId = req.body.cashierId || req.user.id;
@@ -125,6 +140,7 @@ export const getAuditLogs = asyncHandler(async (req, res) => {
 export default {
   getStaffList,
   createStaff,
+  updateStaff,
   openShift,
   closeShift,
   getShifts,

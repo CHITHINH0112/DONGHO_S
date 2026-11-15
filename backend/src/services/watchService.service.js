@@ -6,9 +6,13 @@ import {
   Admin,
 } from '../models/index.js';
 
-export const getAllServices = async () => {
+export const getAllServices = async (options = {}) => {
+  const where = {};
+  if (options.all !== 'true' && options.all !== true && options.onlyActive !== false) {
+    where.isActive = true;
+  }
   return await WatchService.findAll({
-    where: { isActive: true },
+    where,
     order: [['basePrice', 'ASC']],
   });
 };
@@ -66,12 +70,15 @@ export const getRepairTickets = async (query = {}, reqUser = null) => {
   });
 };
 
-export const updateRepairTicketStatus = async (id, status, note = null) => {
+export const updateRepairTicketStatus = async (id, { status, note, cost, paymentStatus, appointmentDate }) => {
   const ticket = await RepairTicket.findByPk(id);
   if (!ticket) return null;
 
-  ticket.status = status;
-  if (note) ticket.note = note;
+  if (status) ticket.status = status;
+  if (note !== undefined) ticket.note = note;
+  if (cost !== undefined) ticket.cost = cost;
+  if (paymentStatus !== undefined) ticket.paymentStatus = paymentStatus;
+  if (appointmentDate !== undefined) ticket.appointmentDate = appointmentDate;
   await ticket.save();
 
   return ticket;

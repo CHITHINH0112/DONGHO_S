@@ -96,6 +96,7 @@ export const seedDatabase = async () => {
       { id: 3, userId: 3, receiverName: 'Trần Thị Sương', phone: '0321421562', address: '123 Lê Lợi, Phường Bến Nghé, Quận 1, TP.HCM', isDefault: true },
     ], { updateOnDuplicate: ['userId', 'receiverName', 'phone', 'address', 'isDefault'] });
 
+    
     console.log('[Seeder] Nạp Watch Services...');
     await WatchService.bulkCreate([
       { id: 1, name: 'Thay pin', serviceType: 'battery', basePrice: 150000.00, estimatedDays: 1, isActive: true },

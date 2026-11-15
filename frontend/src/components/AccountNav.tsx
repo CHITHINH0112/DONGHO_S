@@ -8,6 +8,7 @@ import { watchAudio } from "@/utils/audio";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCrown,
+  faUser,
   faBoxArchive,
   faLocationDot,
   faHeart,
@@ -31,7 +32,7 @@ export default function AccountNav() {
           Khu Vực Dành Riêng Cho Quý Khách Hội Viên
         </h2>
         <p className="text-xs text-muted-foreground max-w-md mt-2 font-light">
-          Vui lòng đăng nhập bằng thẻ thành viên bảo mật BRU_WATCH để truy cập hồ sơ đặc quyền, lịch sử vận đơn xe bọc thép và sổ địa chỉ.
+          Vui lòng đăng nhập bằng thẻ thành viên bảo mật BRU_WATCH để truy cập hồ sơ đặc quyền, lịch sử đơn hàng và sổ địa chỉ.
         </p>
         <button
           onClick={() => openAuthModal("login")}
@@ -45,9 +46,9 @@ export default function AccountNav() {
 
   const navItems = [
     {
-      label: "Hồ Sơ & Thẻ VIP",
+      label: "Hồ Sơ",
       href: "/account",
-      icon: faCrown,
+      icon: faUser,
     },
     {
       label: "Lịch Sử Đơn Mua",

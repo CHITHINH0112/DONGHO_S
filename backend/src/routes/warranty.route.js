@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   checkWarranty,
+  getAllWarranties,
   createWarranty,
   getClaims,
   createClaim,
@@ -11,8 +12,16 @@ import { requireFields } from '../middlewares/validate.middleware.js';
 
 const router = express.Router();
 
-// Tra cứu bảo hành là công khai (khách tra theo serial hoặc mã thẻ)
+// Tra cứu bảo hành công khai (khách tra theo serial hoặc mã thẻ)
 router.get('/check/:code', checkWarranty);
+
+// Lấy danh sách toàn bộ thẻ bảo hành điện tử (Staff / Admin)
+router.get(
+  '/',
+  verifyToken,
+  authorizeRoles('admin', 'staff'),
+  getAllWarranties
+);
 
 // Tạo thẻ bảo hành khi xuất xưởng/bán hàng (Staff / Admin)
 router.post(

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect, Suspense } from "react";
+import React, { useState, useMemo, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { WATCHES, WatchItem } from "@/data/watches";
@@ -16,6 +16,8 @@ import {
   faXmark,
   faGem,
   faChevronRight,
+  faChevronDown,
+  faCheck,
   faClock,
   faRotateLeft,
   faArrowDownWideShort,
@@ -24,6 +26,14 @@ import {
   faTableList,
   faSpinner,
 } from "@fortawesome/free-solid-svg-icons";
+
+const SORT_OPTIONS = [
+  { value: "featured", label: "Nổi Bật / Tuyển Chọn" },
+  { value: "price-desc", label: "Giá: Cao Đến Thấp" },
+  { value: "price-asc", label: "Giá: Thấp Đến Cao" },
+  { value: "rating", label: "Được Đánh Giá Cao Nhất" },
+  { value: "newest", label: "Mới Nhất Vừa Về" },
+];
 
 function ProductsContent() {
   const searchParams = useSearchParams();
@@ -35,28 +45,40 @@ function ProductsContent() {
 
   const [filters, setFilters] = useState<FilterState>({
     brand: initialBrand,
-    category: initialCategory,
+    movement: "all",
     priceRange: "all",
     diameter: "all",
     material: "all",
+    waterResistance: "all",
     isLimitedOnly: false,
     isNewOnly: false,
     search: initialSearch,
     sortBy: "featured",
   });
 
+  const [isSortOpen, setIsSortOpen] = useState(false);
+  const sortRef = useRef<HTMLDivElement>(null);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "horizontal">("grid");
+
+  // Đóng Sort Dropdown khi click ra ngoài
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) {
+        setIsSortOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Sync with URL params if changed externally
   useEffect(() => {
     const b = searchParams.get("brand");
-    const c = searchParams.get("category");
-    if (b || c) {
+    if (b) {
       setFilters((prev) => ({
         ...prev,
-        brand: b || prev.brand,
-        category: c || prev.category,
+        brand: b,
       }));
     }
   }, [searchParams]);
@@ -65,10 +87,11 @@ function ProductsContent() {
     watchAudio.tick();
     setFilters({
       brand: "all",
-      category: "all",
+      movement: "all",
       priceRange: "all",
       diameter: "all",
       material: "all",
+      waterResistance: "all",
       isLimitedOnly: false,
       isNewOnly: false,
       search: "",
@@ -99,7 +122,7 @@ function ProductsContent() {
             if (isMounted) setDbWatches([]);
           }
         } else {
-          if (isMounted) setDbWatches(WATCHES);
+          if (isMounted) setDbWatches([]);
         }
 
         if (resBrands.status === "fulfilled" && resBrands.value.data?.success) {
@@ -117,7 +140,7 @@ function ProductsContent() {
         }
       } catch (err) {
         console.warn("Không thể tải sản phẩm từ API, sử dụng dữ liệu dự phòng:", err);
-        if (isMounted) setDbWatches(WATCHES);
+        if (isMounted) setDbWatches([]);
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -143,9 +166,24 @@ function ProductsContent() {
         }
       }
 
-      // Category filter
-      if (filters.category !== "all" && watch.category !== filters.category) {
-        return false;
+      // Movement filter (Thông tin cỗ máy)
+      if (filters.movement && filters.movement !== "all") {
+        const mov = (watch.specs.movement || "").toLowerCase();
+        if (filters.movement === "automatic" && !mov.includes("automatic") && !mov.includes("tự động")) return false;
+        if (filters.movement === "manual" && !mov.includes("manual") && !mov.includes("cót tay") && !mov.includes("lên cót")) return false;
+        if (filters.movement === "quartz" && !mov.includes("quartz") && !mov.includes("pin") && !mov.includes("thạch anh")) return false;
+        if (filters.movement === "solar" && !mov.includes("solar") && !mov.includes("ánh sáng")) return false;
+      }
+
+      // Water resistance filter (Kháng nước)
+      if (filters.waterResistance && filters.waterResistance !== "all") {
+        const wr = (watch.specs.waterResistance || "").toLowerCase();
+        const atmMatch = wr.match(/(\d+)\s*(atm|bar|m)/i);
+        const atmVal = atmMatch ? parseInt(atmMatch[1], 10) : 0;
+        if (filters.waterResistance === "3-atm" && atmVal < 3) return false;
+        if (filters.waterResistance === "5-atm" && atmVal < 5) return false;
+        if (filters.waterResistance === "10-atm" && atmVal < 10) return false;
+        if (filters.waterResistance === "20-atm" && atmVal < 20) return false;
       }
 
       // Price filter
@@ -196,15 +234,16 @@ function ProductsContent() {
       if (filters.sortBy === "newest") return (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0);
       return 0; // featured default
     });
-  }, [filters]);
+  }, [filters, activeWatches]);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (filters.brand !== "all") count++;
-    if (filters.category !== "all") count++;
+    if (filters.movement && filters.movement !== "all") count++;
     if (filters.priceRange !== "all") count++;
     if (filters.diameter !== "all") count++;
     if (filters.material !== "all") count++;
+    if (filters.waterResistance && filters.waterResistance !== "all") count++;
     if (filters.isLimitedOnly) count++;
     if (filters.isNewOnly) count++;
     if (filters.search.trim() !== "") count++;
@@ -237,10 +276,7 @@ function ProductsContent() {
           <div className="absolute top-0 right-1/4 w-[600px] h-[300px] bg-[#006039]/15 dark:bg-[#006039]/20 rounded-full blur-[140px] pointer-events-none" />
 
           <div className="relative z-10 max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/[0.03] dark:bg-white/[0.03] border border-[#d4af37]/35 text-[#d4af37] text-xs font-mono tracking-[0.2em] uppercase mb-4 backdrop-blur-md">
-              <FontAwesomeIcon icon={faCertificate} className="w-3 h-3 text-[#d4af37]" />
-              <span>BRU_WATCH • 100% Nguyên Bản Thụy Sĩ</span>
-            </div>
+
 
             <h1 className="font-serif text-3xl sm:text-5xl lg:text-6xl font-normal text-foreground tracking-tight leading-tight">
               Danh Mục Tuyệt Tác <span className="italic text-[#d4af37] dark:text-[#f3e3be]">Thời Gian</span>
@@ -316,7 +352,7 @@ function ProductsContent() {
                 </button>
               </div>
 
-              {/* Mobile Filter Toggle Button */}
+              {/* Nút bật Bộ lọc trên Mobile */}
               <button
                 onClick={() => setIsMobileFilterOpen(true)}
                 className="lg:hidden px-4 py-2 rounded-xl bg-[#006039] hover:bg-[#007a48] text-white text-xs font-mono font-semibold flex items-center gap-2 border border-emerald-500/30 transition-all cursor-pointer"
@@ -330,23 +366,52 @@ function ProductsContent() {
                 )}
               </button>
 
-              {/* Sort Dropdown */}
-              <div className="flex items-center gap-2 text-xs font-mono">
-                <span className="hidden sm:inline text-muted-foreground text-[11px] uppercase tracking-wider flex items-center gap-1">
-                  <FontAwesomeIcon icon={faArrowDownWideShort} className="w-3 h-3 text-[#d4af37]" />
-                  Sắp xếp:
-                </span>
-                <select
-                  value={filters.sortBy}
-                  onChange={(e) => setFilters({ ...filters, sortBy: e.target.value })}
-                  className="px-3 py-2 rounded-xl bg-background border border-[#d4af37]/30 text-foreground text-xs font-mono cursor-pointer focus:outline-none focus:border-[#d4af37]"
-                >
-                  <option value="featured">Nổi Bật / Tuyển Chọn</option>
-                  <option value="price-desc">Giá: Cao Đến Thấp</option>
-                  <option value="price-asc">Giá: Thấp Đến Cao</option>
-                  <option value="rating">Được Đánh Giá Cao Nhất</option>
-                  <option value="newest">Mới Nhất Vừa Về</option>
-                </select>
+              {/* Custom Sort Dropdown (Tương thích 100% Sáng & Tối) */}
+              <div className="relative inline-block text-xs font-mono" ref={sortRef}>
+                <div className="flex items-center gap-2">
+                  <span className="hidden sm:inline text-muted-foreground text-[11px] uppercase tracking-wider flex items-center gap-1">
+                    <FontAwesomeIcon icon={faArrowDownWideShort} className="w-3 h-3 text-[#d4af37]" />
+                    Sắp xếp:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsSortOpen((prev) => !prev)}
+                    className="px-3.5 py-2 rounded-xl bg-card border border-border hover:border-[#d4af37]/60 text-foreground text-xs font-mono flex items-center gap-2 cursor-pointer transition-all shadow-xs"
+                    aria-expanded={isSortOpen}
+                  >
+                    <span>{SORT_OPTIONS.find((o) => o.value === filters.sortBy)?.label || "Nổi Bật"}</span>
+                    <FontAwesomeIcon
+                      icon={faChevronDown}
+                      className={`w-2.5 h-2.5 text-[#d4af37] transition-transform duration-200 ${isSortOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                </div>
+
+                {isSortOpen && (
+                  <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-card border border-border shadow-2xl p-1.5 z-50 animate-fadeIn backdrop-blur-xl">
+                    {SORT_OPTIONS.map((opt) => {
+                      const isSelected = filters.sortBy === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => {
+                            setFilters({ ...filters, sortBy: opt.value });
+                            setIsSortOpen(false);
+                          }}
+                          className={`w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-mono flex items-center justify-between transition-colors cursor-pointer ${
+                            isSelected
+                              ? "bg-[#d4af37]/15 text-[#d4af37] font-bold"
+                              : "text-foreground hover:bg-muted/70 hover:text-[#d4af37]"
+                          }`}
+                        >
+                          <span>{opt.label}</span>
+                          {isSelected && <FontAwesomeIcon icon={faCheck} className="w-3 h-3 text-[#d4af37]" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Counter Display */}
@@ -370,10 +435,19 @@ function ProductsContent() {
                 </span>
               )}
 
-              {filters.category !== "all" && (
+              {filters.movement && filters.movement !== "all" && (
                 <span className="px-3 py-1 rounded-full bg-[#d4af37]/15 border border-[#d4af37]/35 text-[#d4af37] flex items-center gap-2">
-                  <span>Dòng: {filters.category}</span>
-                  <button onClick={() => setFilters({ ...filters, category: "all" })} className="hover:text-foreground">
+                  <span>Máy: {filters.movement}</span>
+                  <button onClick={() => setFilters({ ...filters, movement: "all" })} className="hover:text-foreground">
+                    <FontAwesomeIcon icon={faXmark} className="w-2.5 h-2.5" />
+                  </button>
+                </span>
+              )}
+
+              {filters.waterResistance && filters.waterResistance !== "all" && (
+                <span className="px-3 py-1 rounded-full bg-[#d4af37]/15 border border-[#d4af37]/35 text-[#d4af37] flex items-center gap-2">
+                  <span>Kháng nước: {filters.waterResistance}</span>
+                  <button onClick={() => setFilters({ ...filters, waterResistance: "all" })} className="hover:text-foreground">
                     <FontAwesomeIcon icon={faXmark} className="w-2.5 h-2.5" />
                   </button>
                 </span>
@@ -433,9 +507,9 @@ function ProductsContent() {
             </div>
           )}
 
-          {/* Main Layout: Sidebar & Products Grid */}
-          <div className="flex gap-8 items-start">
-            {/* Desktop Filter Sidebar */}
+          {/* Main Layout: Bố cục 2 Cột (Sidebar Dọc Bên Trái & Lưới Sản Phẩm Bên Phải) */}
+          <div className="flex flex-col lg:flex-row gap-8 items-start">
+            {/* Desktop Filter Sidebar (Thanh dọc cố định bên trái) */}
             <ProductFilterSidebar
               filters={filters}
               onChange={setFilters}
@@ -447,7 +521,7 @@ function ProductsContent() {
             />
 
             {/* Products Grid or Empty State */}
-            <div className="flex-1">
+            <div className="flex-1 min-w-0 w-full">
               {loading ? (
                 <div className="py-24 text-center flex flex-col items-center justify-center gap-3">
                   <FontAwesomeIcon icon={faSpinner} className="fa-spin text-3xl text-[#d4af37]" />
@@ -481,7 +555,7 @@ function ProductsContent() {
                   </p>
                   <button
                     onClick={handleResetFilters}
-                    className="mt-6 px-6 py-3 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b38f28] text-black font-semibold text-xs uppercase tracking-wider shadow-lg flex items-center gap-2 mx-auto"
+                    className="mt-6 px-6 py-3 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b38f28] text-black font-semibold text-xs uppercase tracking-wider shadow-lg flex items-center gap-2 mx-auto cursor-pointer"
                   >
                     <FontAwesomeIcon icon={faRotateLeft} className="w-3.5 h-3.5" />
                     <span>Xóa Toàn Bộ Bộ Lọc</span>

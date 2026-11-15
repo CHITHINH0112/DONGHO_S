@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faCrown,
-  faGaugeHigh,
   faClock,
   faReceipt,
   faShieldHalved,
@@ -37,16 +36,17 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
 
   const navigation = [
     {
-      name: 'Tổng Quan',
-      href: '/',
-      icon: faGaugeHigh,
-      badge: null,
-    },
-    {
       name: 'Kho Đồng Hồ & Mẫu',
       href: '/products',
       icon: faClock,
       badge: null,
+    },
+    {
+      name: 'Kiểm Kho & Serial',
+      href: '/inventory',
+      icon: faBoxesStacked,
+      badge: 'Kho hàng',
+      badgeColor: 'emerald',
     },
     {
       name: 'Thương Hiệu & Hãng',
@@ -66,6 +66,20 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
       icon: faSliders,
       badge: null,
     },
+    {
+      name: 'Quản Lý Tài Khoản',
+      href: '/staff',
+      icon: faUserTie,
+      badge: 'Khách & NV',
+      badgeColor: 'emerald',
+    },
+    {
+      name: 'Bảo Hành & Sửa Chữa',
+      href: '/warranties',
+      icon: faShieldHalved,
+      badge: 'Dịch vụ',
+      badgeColor: 'gold',
+    },
     /* =========================================================================
      * CÁC PHÂN HỆ TẠM ẨN CHO DEADLINE (CHƯA CẦN THIẾT):
      * =========================================================================
@@ -74,12 +88,6 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
       href: '/orders',
       icon: faReceipt,
       badge: '14 mới',
-    },
-    {
-      name: 'Bảo Hành & Sửa Chữa',
-      href: '/warranties',
-      icon: faShieldHalved,
-      badge: null,
     },
     {
       name: 'Quản Lý Ca Thu Ngân',
@@ -127,7 +135,10 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
       >
         {/* Brand Header */}
         <div className="h-20 px-6 flex items-center justify-between border-b border-white/[0.06] bg-[#070e0a]/80 backdrop-blur-md">
-          <Link href="/" className="flex items-center gap-3.5 group">
+          <Link
+            href={admin?.position === 'warehouse' ? '/inventory' : '/products'}
+            className="flex items-center gap-3.5 group"
+          >
             <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#122319] to-[#070e0a] border border-[#d4af37]/40 flex items-center justify-center shadow-[0_0_15px_rgba(212,175,55,0.2)] group-hover:border-[#d4af37] transition-colors">
               <FontAwesomeIcon icon={faCrown} className="text-[#d4af37] text-base" />
             </div>
@@ -171,7 +182,9 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
         <nav className="flex-1 px-3 space-y-1 overflow-y-auto py-2">
           <div className="px-3 pb-2 pt-1 flex items-center justify-between text-[10px] uppercase font-semibold tracking-[0.2em] text-stone-300">
             <span>Phân Hệ Hoạt Động</span>
-            <span className="font-mono text-[#d4af37] text-[9px] lowercase">({navigation.length} mục)</span>
+            <span className="font-mono text-[#d4af37] text-[9px] lowercase">
+              ({navigation.filter((item) => canAccessRoute(admin, item.href)).length} mục)
+            </span>
           </div>
 
           {navigation

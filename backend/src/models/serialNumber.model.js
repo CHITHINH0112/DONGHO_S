@@ -19,7 +19,17 @@ export const SerialNumber = sequelize.define('SerialNumber', {
     field: 'serial_number',
   },
   status: {
-    type: DataTypes.ENUM('pending_approval', 'available', 'reserved', 'sold', 'defective', 'in_repair'),
+    type: DataTypes.ENUM(
+      'pending_approval',
+      'pending_warehouse_check',
+      'available',
+      'missing_on_import',
+      'reserved',
+      'sold',
+      'defective',
+      'in_repair',
+      'returned_to_warehouse'
+    ),
     allowNull: false,
     defaultValue: 'pending_approval',
   },
@@ -33,6 +43,28 @@ export const SerialNumber = sequelize.define('SerialNumber', {
     type: DataTypes.ENUM('warehouse', 'showroom'),
     allowNull: false,
     defaultValue: 'warehouse',
+  },
+  importedByAdminId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    field: 'imported_by_admin_id',
+    comment: 'Admin đẩy danh sách seri lên hệ thống và duyệt',
+  },
+  adminApprovedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    field: 'admin_approved_at',
+  },
+  warehouseConfirmedById: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    field: 'warehouse_confirmed_by',
+    comment: 'Nhân viên kho đối chiếu thực tế và xác nhận',
+  },
+  warehouseConfirmedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    field: 'warehouse_confirmed_at',
   },
   note: {
     type: DataTypes.STRING(255),

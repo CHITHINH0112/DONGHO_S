@@ -2,6 +2,7 @@ import { Op } from 'sequelize';
 import {
   Warranty,
   WarrantyClaim,
+  WatchService,
   SerialNumber,
   ProductVariant,
   Product,
@@ -47,6 +48,40 @@ export const checkWarranty = async (identifier) => {
   return warranty;
 };
 
+export const getAllWarranties = async (query = {}) => {
+  const where = {};
+  if (query.status) where.status = query.status;
+
+  return await Warranty.findAll({
+    where,
+    order: [['id', 'DESC']],
+    include: [
+      {
+        model: SerialNumber,
+        as: 'serialNumber',
+        include: [
+          {
+            model: ProductVariant,
+            as: 'variant',
+            include: [
+              {
+                model: Product,
+                as: 'product',
+                attributes: ['id', 'name', 'slug', 'imageUrl', 'warrantyMonths'],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        model: User,
+        as: 'user',
+        attributes: ['id', 'name', 'phone', 'email'],
+      },
+    ],
+  });
+};
+
 export const createWarranty = async (data) => {
   return await Warranty.create(data);
 };
@@ -75,6 +110,11 @@ export const getWarrantyClaims = async (query = {}, reqUser = null) => {
         as: 'warranty',
       },
       {
+        model: WatchService,
+        as: 'service',
+        attributes: ['id', 'name', 'serviceType', 'basePrice', 'isWarrantyEligible'],
+      },
+      {
         model: User,
         as: 'customer',
         attributes: ['id', 'name', 'phone'],
@@ -93,8 +133,8 @@ export const updateClaimStatus = async (id, { status, returnedDate, note }) => {
   if (!claim) return null;
 
   if (status) claim.status = status;
-  if (returnedDate) claim.returnedDate = returnedDate;
-  if (note) claim.note = note;
+  if (returnedDate !== undefined) claim.returnedDate = returnedDate;
+  if (note !== undefined) claim.note = note;
 
   await claim.save();
   return claim;
@@ -102,6 +142,7 @@ export const updateClaimStatus = async (id, { status, returnedDate, note }) => {
 
 export default {
   checkWarranty,
+  getAllWarranties,
   createWarranty,
   createWarrantyClaim,
   getWarrantyClaims,

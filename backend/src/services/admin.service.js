@@ -13,13 +13,23 @@ export const getStaffList = async () => {
 };
 
 export const createStaff = async (data) => {
-  return await Admin.create(data);
+  const payload = { ...data };
+  if (payload.password && !payload.passwordHash) {
+    payload.passwordHash = payload.password;
+    delete payload.password;
+  }
+  return await Admin.create(payload);
 };
 
 export const updateStaff = async (id, data) => {
   const staff = await Admin.findByPk(id);
   if (!staff) return null;
-  await staff.update(data);
+  const payload = { ...data };
+  if (payload.password) {
+    payload.passwordHash = payload.password;
+    delete payload.password;
+  }
+  await staff.update(payload);
   return staff;
 };
 

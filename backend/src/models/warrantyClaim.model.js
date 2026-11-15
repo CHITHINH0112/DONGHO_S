@@ -19,6 +19,12 @@ export const WarrantyClaim = sequelize.define('WarrantyClaim', {
     field: 'warranty_id',
     comment: 'Phiếu bảo hành áp dụng',
   },
+  serviceId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    field: 'service_id',
+    comment: 'Hạng mục bảo hành (lấy từ watch_services có is_warranty_eligible = 1)',
+  },
   customerId: {
     type: DataTypes.INTEGER,
     allowNull: true,

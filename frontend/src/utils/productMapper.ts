@@ -142,6 +142,8 @@ export function mapDbProductToWatchItem(p: any): WatchItem {
           priceVND: variantPriceVND,
           priceUSD: variantPriceUSD,
           mauMatSo: v.mauMatSo || 'Mặt Số Cổ Điển',
+          mauDayDeo: v.mauDayDeo || null,
+          mauNieng: v.mauNieng || null,
           images: vImages.length > 0 ? vImages : [mainImage],
           stockCount,
         };
@@ -152,11 +154,11 @@ export function mapDbProductToWatchItem(p: any): WatchItem {
   const movementMap: Record<string, string> = {
     automatic: 'Cơ tự động lên dây (Automatic)',
     manual: 'Cơ lên cót tay (Manual Winding)',
-    quartz: 'Điện tử chuẩn Thụy Sĩ (Quartz)',
+    quartz: 'Pin Thạch Anh (Quartz)',
     solar: 'Năng lượng ánh sáng (Solar)',
     smart: 'Cơ chế thông minh cao cấp',
   };
-  const movement = movementMap[p.loaiBoMay] || 'Cơ tự động Thụy Sĩ (Automatic)';
+  const movement = movementMap[p.loaiBoMay] || 'Cơ tự động lên dây (Automatic)';
 
   const primaryFeature = p.features?.[0]?.name;
 
@@ -182,13 +184,14 @@ export function mapDbProductToWatchItem(p: any): WatchItem {
     specs: {
       diameter: p.duongKinhMatSo ? `${p.duongKinhMatSo} mm` : '40.0 mm',
       thickness: p.beDayMatSo ? `${p.beDayMatSo} mm` : '11.5 mm',
-      caseMaterial: p.chatLieuNieng || 'Thép không gỉ 316L Thụy Sĩ',
+      weight: p.khoiLuong ? `${p.khoiLuong} g` : undefined,
+      caseMaterial: p.chatLieuNieng || 'Thép không gỉ 316L',
       bezel: p.chatLieuNieng || 'Niềng kim loại cao cấp',
       crystal: p.chatLieuKinh || 'Kính Sapphire nguyên khối chống lóa',
       movement,
       calibre: `Calibre In-House BRU_WATCH (${p.brand?.name || 'Swiss'})`,
       jewels: '28-31 Chân kính Ruby giảm ma sát',
-      powerReserve: '70 giờ trữ cót tối đa',
+      powerReserve: '',
       waterResistance: p.khaNangChongNuoc || '10 ATM (100m)',
       frequency: '28,800 vph (4 Hz)',
       strap: p.chatLieuDayDeo || p.Chat_Lieu_Day_Deo || 'Dây Thép Không Gỉ 316L',

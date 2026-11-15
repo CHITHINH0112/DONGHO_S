@@ -19,6 +19,14 @@ export const checkWarranty = asyncHandler(async (req, res) => {
   });
 });
 
+export const getAllWarranties = asyncHandler(async (req, res) => {
+  const list = await warrantyService.getAllWarranties(req.query);
+  return successResponse(res, {
+    message: 'Lấy danh sách thẻ bảo hành điện tử thành công',
+    data: list,
+  });
+});
+
 export const createWarranty = asyncHandler(async (req, res) => {
   const warranty = await warrantyService.createWarranty(req.body);
   return successResponse(res, {
@@ -72,6 +80,7 @@ export const updateClaimStatus = asyncHandler(async (req, res) => {
 
 export default {
   checkWarranty,
+  getAllWarranties,
   createWarranty,
   getClaims,
   createClaim,

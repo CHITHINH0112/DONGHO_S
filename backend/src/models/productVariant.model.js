@@ -37,6 +37,18 @@ export const ProductVariant = sequelize.define('ProductVariant', {
     field: 'Mau_Mat_So',
     comment: 'Màu mặt số (VD: Đen, Trắng...)',
   },
+  mauDayDeo: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    field: 'Mau_Day_Deo',
+    comment: 'Màu dây đeo',
+  },
+  mauNieng: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    field: 'Mau_Nieng',
+    comment: 'Màu niềng/vỏ',
+  },
 }, {
   tableName: 'product_variants',
   timestamps: false,

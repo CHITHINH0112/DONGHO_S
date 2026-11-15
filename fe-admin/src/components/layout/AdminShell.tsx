@@ -109,11 +109,15 @@ export default function AdminShell({
 
               <div className="mt-6 flex items-center gap-3">
                 <Link
-                  href="/"
+                  href={admin?.position === 'warehouse' ? '/inventory' : '/products'}
                   className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#00844e] to-[#006039] hover:from-[#009b5c] hover:to-[#007345] text-white text-xs font-medium flex items-center gap-2 shadow-lg transition-all"
                 >
                   <FontAwesomeIcon icon={faArrowLeft} className="text-xs" />
-                  <span>Quay Về Bảng Tổng Quan</span>
+                  <span>
+                    {admin?.position === 'warehouse'
+                      ? 'Quay Về Trang Kiểm Kho'
+                      : 'Quay Về Kho Đồng Hồ'}
+                  </span>
                 </Link>
               </div>
             </div>

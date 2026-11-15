@@ -3,7 +3,7 @@ import { successResponse, errorResponse } from '../utils/apiResponse.js';
 import watchServiceService from '../services/watchService.service.js';
 
 export const getServices = asyncHandler(async (req, res) => {
-  const services = await watchServiceService.getAllServices();
+  const services = await watchServiceService.getAllServices(req.query);
   return successResponse(res, {
     message: 'Lấy bảng giá dịch vụ sửa chữa thành công',
     data: services,
@@ -63,9 +63,8 @@ export const createRepairTicket = asyncHandler(async (req, res) => {
 
 export const updateTicketStatus = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { status, note } = req.body;
 
-  const ticket = await watchServiceService.updateRepairTicketStatus(id, status, note);
+  const ticket = await watchServiceService.updateRepairTicketStatus(id, req.body);
   if (!ticket) {
     return errorResponse(res, {
       statusCode: 404,

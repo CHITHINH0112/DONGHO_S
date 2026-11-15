@@ -63,6 +63,12 @@ export const Product = sequelize.define('Product', {
     field: 'Be_Day_Mat_So',
     comment: 'Bề dày mặt số (đơn vị mm, VD: 10.0)',
   },
+  khoiLuong: {
+    type: DataTypes.DECIMAL(8, 2),
+    allowNull: true,
+    field: 'Khoi_Luong',
+    comment: 'Khối lượng sản phẩm (gram)',
+  },
   chatLieuNieng: {
     type: DataTypes.STRING(100),
     allowNull: true,

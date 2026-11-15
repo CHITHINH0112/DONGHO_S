@@ -64,6 +64,11 @@ export const getAllWatches = async (query = {}) => {
             model: ProductVariantImage,
             as: 'images',
           },
+          {
+            model: SerialNumber,
+            as: 'serialNumbers',
+            attributes: ['id', 'serialNumber', 'status'],
+          },
         ],
       },
     ],

@@ -82,11 +82,16 @@ export const getAllProducts = async (query = {}) => {
       {
         model: ProductVariant,
         as: 'variants',
-        attributes: ['id', 'sku', 'price', 'costPrice', 'status', 'mauMatSo'],
+        attributes: ['id', 'sku', 'price', 'costPrice', 'status', 'mauMatSo', 'mauDayDeo', 'mauNieng'],
         include: [
           {
             model: ProductVariantImage,
             as: 'images',
+          },
+          {
+            model: SerialNumber,
+            as: 'serialNumbers',
+            attributes: ['id', 'serialNumber', 'status'],
           },
         ],
       },
@@ -136,7 +141,7 @@ export const getProductByIdOrSlug = async (identifier) => {
           {
             model: SerialNumber,
             as: 'serialNumbers',
-            attributes: ['id', 'serialNumber', 'status', 'itemCondition', 'location'],
+            attributes: ['id', 'serialNumber', 'status', 'itemCondition', 'location', 'importedByAdminId', 'adminApprovedAt', 'warehouseConfirmedById', 'warehouseConfirmedAt', 'note'],
           },
         ],
       },
@@ -151,8 +156,44 @@ export const getProductByIdOrSlug = async (identifier) => {
   return product;
 };
 
+// Helper sinh slug duy nhất tránh xung đột (409 Conflict)
+const generateUniqueSlug = async (rawSlug, excludeId = null) => {
+  let baseSlug = (rawSlug || 'product')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[đĐ]/g, 'd')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-');
+
+  if (!baseSlug) baseSlug = `watch-${Date.now()}`;
+
+  let uniqueSlug = baseSlug;
+  let counter = 1;
+
+  while (true) {
+    const whereClause = { slug: uniqueSlug };
+    if (excludeId) {
+      whereClause.id = { [Op.ne]: excludeId };
+    }
+    const existing = await Product.findOne({ where: whereClause, attributes: ['id'] });
+    if (!existing) {
+      break;
+    }
+    uniqueSlug = `${baseSlug}-${counter}`;
+    counter++;
+  }
+
+  return uniqueSlug;
+};
+
 export const createProduct = async (data) => {
   const { featureIds, ...productData } = data;
+
+  // Tự động kiểm tra và đảm bảo slug luôn duy nhất tuyệt đối
+  productData.slug = await generateUniqueSlug(productData.slug || productData.name);
+
   const product = await Product.create(productData);
 
   if (Array.isArray(featureIds) && featureIds.length > 0) {
@@ -167,6 +208,11 @@ export const updateProduct = async (id, data) => {
   if (!product) return null;
 
   const { featureIds, ...productData } = data;
+
+  if (productData.slug) {
+    productData.slug = await generateUniqueSlug(productData.slug, id);
+  }
+
   await product.update(productData);
 
   if (Array.isArray(featureIds)) {

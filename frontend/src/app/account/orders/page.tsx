@@ -49,7 +49,7 @@ export default function AccountOrdersPage() {
         };
       case "armored_transit":
         return {
-          label: "Xe Bọc Thép Đang Vận Chuyển",
+          label: "Đang Vận Chuyển",
           color: "text-blue-400 bg-blue-500/10 border-blue-500/30",
           icon: faTruck,
         };
@@ -95,7 +95,7 @@ export default function AccountOrdersPage() {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-serif text-xl sm:text-2xl font-normal text-foreground">
-              Lịch Sử Đơn Hàng & Vận Đơn Xe Bọc Thép
+              Lịch Sử Đơn Hàng
             </h3>
             <p className="text-xs text-muted-foreground font-light mt-0.5">
               Toàn bộ kiệt tác được bàn giao đều gắn liền với số Serial máy lưu trữ bảo mật vĩnh viễn.
@@ -170,7 +170,7 @@ export default function AccountOrdersPage() {
                       <div className="w-6 h-6 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
                         <FontAwesomeIcon icon={faTruck} className="w-3 h-3" />
                       </div>
-                      <span>Vận đơn xe bọc thép: </span>
+                      <span>Mã vận đơn: </span>
                       <strong className="text-[#d4af37] tracking-wider font-semibold">
                         {order.armoredTrackingCode}
                       </strong>

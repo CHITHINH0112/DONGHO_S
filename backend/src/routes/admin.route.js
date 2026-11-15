@@ -2,6 +2,7 @@ import express from 'express';
 import {
   getStaffList,
   createStaff,
+  updateStaff,
   openShift,
   closeShift,
   getShifts,
@@ -22,6 +23,7 @@ router.use(authorizeRoles('admin', 'staff'));
 // Quản lý nhân sự (Chỉ admin / manager)
 router.get('/staff', authorizePositions('manager'), getStaffList);
 router.post('/staff', authorizePositions('manager'), requireFields('name', 'email', 'staffCode'), createStaff);
+router.put('/staff/:id', authorizePositions('manager'), updateStaff);
 
 // Quản lý ca thu ngân
 router.get('/shifts', getShifts);

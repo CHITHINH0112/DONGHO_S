@@ -16,8 +16,6 @@ import {
   faQrcode,
   faMoneyBillWave,
   faLock,
-  faTag,
-  faGem,
   faArrowRight,
   faLocationDot,
   faCheck,
@@ -55,16 +53,10 @@ export default function CheckoutPage() {
   const [customAddress, setCustomAddress] = useState("");
   const [customCity, setCustomCity] = useState("TP. Hồ Chí Minh");
   const [securityNotes, setSecurityNotes] = useState("");
-  const [voucherInput, setVoucherInput] = useState("");
 
   const finalSubtotalVND = subtotalVND * (1 - discountRate);
   const finalSubtotalUSD = subtotalUSD * (1 - discountRate);
 
-  const handleApplyVoucher = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!voucherInput) return;
-    applyPromoCode(voucherInput);
-  };
 
   const handlePlaceOrder = (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,12 +76,12 @@ export default function CheckoutPage() {
     } else {
       finalAddress = {
         id: `ADDR-${Date.now()}`,
-        receiverName: customReceiverName || user?.name || "Khách VIP",
+        receiverName: customReceiverName || user?.name || "Quý khách",
         phone: customPhone || user?.phone || "0900 000 000",
-        address: customAddress || (deliveryMethod === "salon" ? "Phòng VIP Salon Suite - Đồng Khởi" : "Dinh thự Quý khách"),
+        address: customAddress || (deliveryMethod === "salon" ? "Boutique BRU_WATCH - Đồng Khởi" : "Địa chỉ của Quý khách"),
         city: customCity,
         isDefault: false,
-        tag: deliveryMethod === "salon" ? "Văn phòng VIP" : "Dinh thự",
+        tag: deliveryMethod === "salon" ? "Boutique" : "Tư gia",
       };
     }
 
@@ -135,10 +127,10 @@ export default function CheckoutPage() {
           BRU_WATCH • PRIVATE CONCIERGE
         </span>
         <h1 className="font-serif text-2xl sm:text-4xl font-normal text-foreground mt-1">
-          Thủ Tục Bàn Giao & Thanh Toán VIP
+          Thủ Tục Đặt Hàng & Thanh Toán
         </h1>
         <p className="text-xs text-muted-foreground mt-2 font-light">
-          Hệ thống bảo mật quy chuẩn ngân hàng Thụy Sĩ. Mọi chuyến hàng đều được hộ tống bởi xe bọc thép có vũ trang.
+          Đơn hàng được niêm phong cẩn thận và bảo hiểm 100% giá trị trên toàn bộ lộ trình giao nhận.
         </p>
       </div>
 
@@ -176,14 +168,14 @@ export default function CheckoutPage() {
                 <div>
                   <div className="flex items-center justify-between">
                     <span className="font-serif text-sm font-medium text-foreground">
-                      Xe Bọc Thép Chuyên Dụng
+                      Giao Hàng Tận Nơi
                     </span>
                     <span className="text-[10px] font-mono text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">
                       MIỄN PHÍ
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2 font-light leading-relaxed">
-                    Được hộ tống bởi 2 vệ sĩ trang bị vũ trang chuyên trách và thiết bị niêm phong GPS Thụy Sĩ.
+                    Đóng gói niêm phong cẩn thận và giao tận tay Quý khách bảo đảm an toàn tuyệt đối.
                   </p>
                 </div>
                 <div className="mt-4 flex items-center gap-1.5 text-[11px] font-mono text-emerald-400">
@@ -206,7 +198,7 @@ export default function CheckoutPage() {
                 <div>
                   <div className="flex items-center justify-between">
                     <span className="font-serif text-sm font-medium text-foreground">
-                      Bàn Giao Tại VIP Salon Suite
+                      Nhận Tại Boutique BRU_WATCH
                     </span>
                     <span className="text-[10px] font-mono text-[#d4af37] font-semibold bg-[#d4af37]/10 px-2 py-0.5 rounded-full border border-[#d4af37]/30">
                       ĐẶC QUYỀN
@@ -362,7 +354,7 @@ export default function CheckoutPage() {
                   </>
                 ) : (
                   <div className="p-4 rounded-2xl bg-muted/40 border border-border text-xs text-foreground space-y-1">
-                    <span className="font-semibold text-[#d4af37]">Địa Điểm Tiếp Đón VIP Salon:</span>
+                    <span className="font-semibold text-[#d4af37]">Địa Điểm Tiếp Đón Tại Boutique:</span>
                     <p className="text-muted-foreground leading-relaxed">
                       BRU_WATCH Flagship Boutique - Số 15 Tràng Tiền, Hoàn Kiếm, Hà Nội hoặc 68 Đồng Khởi, Quận 1, TP. Hồ Chí Minh. Đội ngũ Concierge sẽ liên hệ đặt lịch trước với Quý khách.
                     </p>
@@ -459,7 +451,7 @@ export default function CheckoutPage() {
                   </div>
                   <div>
                     <h5 className="font-serif text-sm font-medium text-foreground">
-                      Thanh Toán Khi Tiếp Nhận Bàn Giao Xe Bọc Thép
+                      Thanh Toán Khi Nhận Hàng (COD)
                     </h5>
 
 
@@ -587,58 +579,14 @@ export default function CheckoutPage() {
               })}
             </div>
 
-            {/* Voucher input form */}
-            <div className="pt-2">
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <input
-                    type="text"
-                    placeholder="Mã VIP: EMERALD10"
-                    value={voucherInput}
-                    onChange={(e) => setVoucherInput(e.target.value)}
-                    className="w-full pl-8 pr-3 py-2.5 rounded-xl bg-background border border-border text-xs font-mono uppercase text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-[#d4af37]"
-                  />
-                  <FontAwesomeIcon
-                    icon={faTag}
-                    className="w-3.5 h-3.5 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={handleApplyVoucher}
-                  className="px-4 py-2.5 rounded-xl bg-muted hover:bg-[#d4af37] hover:text-black text-xs font-mono font-semibold transition-colors text-foreground cursor-pointer"
-                >
-                  Áp Dụng
-                </button>
-              </div>
-
-              {discountRate > 0 && (
-                <div className="mt-2.5 flex items-center justify-between text-xs font-mono text-emerald-400 bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/30">
-                  <span className="flex items-center gap-1.5">
-                    <FontAwesomeIcon icon={faGem} className="w-3 h-3 text-[#d4af37]" />
-                    <span>Đặc quyền {promoCode}: Giảm 10%</span>
-                  </span>
-                  <span>-10%</span>
-                </div>
-              )}
-            </div>
-
             {/* Price Calculations */}
             <div className="space-y-2 text-xs font-mono pt-3 border-t border-border">
               <div className="flex justify-between text-muted-foreground">
                 <span>Tạm tính</span>
                 <span>{formatPrice(subtotalUSD, subtotalVND)}</span>
               </div>
-              {discountRate > 0 && (
-                <div className="flex justify-between text-emerald-400 font-semibold">
-                  <span>Ưu đãi hội viên VIP (-10%)</span>
-                  <span>
-                    -{formatPrice(subtotalUSD * 0.1, subtotalVND * 0.1)}
-                  </span>
-                </div>
-              )}
               <div className="flex justify-between text-muted-foreground">
-                <span>Vận đơn xe bọc thép có vệ sĩ</span>
+                <span>Vận chuyển bảo đảm</span>
                 <span className="text-emerald-400 font-semibold">MIỄN PHÍ</span>
               </div>
               <div className="flex justify-between text-muted-foreground">

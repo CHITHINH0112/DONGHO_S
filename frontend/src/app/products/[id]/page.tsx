@@ -25,9 +25,8 @@ async function fetchWatchByIdOrSlug(idOrSlug: string): Promise<WatchItem | null>
     // API server offline or network issue
   }
 
-  // Fallback to static mock watches
-  const staticMatch = WATCHES.find((w) => w.id === idOrSlug);
-  return staticMatch || null;
+  // Không fallback dữ liệu mock ảo, chỉ trả về sản phẩm trong Database
+  return null;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {

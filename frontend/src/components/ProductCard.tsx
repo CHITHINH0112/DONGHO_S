@@ -97,23 +97,7 @@ export default function ProductCard({
             </span>
           </div>
 
-          {/* Top Right: Wishlist Button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleWishlist(watch.id);
-            }}
-            className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-white/80 dark:bg-black/60 hover:scale-110 active:scale-95 border border-black/[0.08] dark:border-white/[0.1] flex items-center justify-center transition-all shadow-sm cursor-pointer"
-            title="Thêm vào danh sách yêu thích"
-            aria-label="Thêm vào yêu thích"
-          >
-            <FontAwesomeIcon
-              icon={faHeart}
-              className={`w-3.5 h-3.5 transition-colors ${
-                isFavorited ? "text-rose-500" : "text-muted-foreground hover:text-rose-500"
-              }`}
-            />
-          </button>
+          
 
           {/* Bottom Center: Quick View Button */}
           <button
@@ -163,8 +147,8 @@ export default function ProductCard({
                 <span className="text-xs font-mono font-semibold text-foreground dark:text-white mt-0.5 block truncate">{watch.specs.calibre}</span>
               </div>
               <div className="p-2.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.03] border border-black/[0.04] dark:border-white/[0.05]">
-                <span className="text-[9px] font-mono uppercase text-muted-foreground dark:text-white/40 block">Dự trữ năng lượng</span>
-                <span className="text-xs font-mono font-semibold text-foreground dark:text-white mt-0.5 block">{watch.specs.powerReserve}</span>
+                <span className="text-[9px] font-mono uppercase text-muted-foreground dark:text-white/40 block">Mặt kính</span>
+                <span className="text-xs font-mono font-semibold text-foreground dark:text-white mt-0.5 block truncate">{watch.specs.crystal ? watch.specs.crystal.split(".")[0] : "Kính Sapphire"}</span>
               </div>
               <div className="p-2.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.03] border border-black/[0.04] dark:border-white/[0.05]">
                 <span className="text-[9px] font-mono uppercase text-muted-foreground dark:text-white/40 block">Chất liệu vỏ</span>
@@ -313,23 +297,7 @@ export default function ProductCard({
           </span>
         </div>
 
-        {/* Wishlist Button */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleWishlist(watch.id);
-          }}
-          className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full bg-white/80 dark:bg-black/60 hover:scale-110 active:scale-95 border border-black/[0.08] dark:border-white/[0.1] flex items-center justify-center transition-all shadow-sm cursor-pointer"
-          title="Thêm vào danh sách yêu thích"
-          aria-label="Thêm vào yêu thích"
-        >
-          <FontAwesomeIcon
-            icon={faHeart}
-            className={`w-3.5 h-3.5 transition-colors ${
-              isFavorited ? "text-rose-500" : "text-muted-foreground hover:text-rose-500"
-            }`}
-          />
-        </button>
+        
 
         {/* Action Buttons on Hover */}
         <div className="absolute bottom-4 inset-x-4 flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-2 group-hover:translate-y-0 z-10 pointer-events-auto">
@@ -375,9 +343,6 @@ export default function ProductCard({
           <div className="flex flex-wrap gap-1.5 mt-3.5 pt-3 border-t border-black/[0.05] dark:border-white/[0.05] text-[10px] font-mono text-muted-foreground dark:text-white/60">
             <span className="px-2 py-0.5 rounded-md bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.05] dark:border-white/[0.06]">
               {watch.specs.diameter}
-            </span>
-            <span className="px-2 py-0.5 rounded-md bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.05] dark:border-white/[0.06]">
-              {watch.specs.powerReserve}
             </span>
             <span className="px-2 py-0.5 rounded-md bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.05] dark:border-white/[0.06]">
               {watch.specs.waterResistance.split("(")[0]}

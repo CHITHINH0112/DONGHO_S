@@ -82,7 +82,7 @@ export default function CartDrawer() {
               </div>
               <div>
                 <h3 className="font-serif text-lg font-normal text-white">
-                  Giỏ Hàng Bảo Mật VIP
+                  Giỏ Hàng
                 </h3>
                 <span className="text-xs font-mono text-white/50 font-light">
                   {cart.length} tuyệt tác được chọn
@@ -210,34 +210,7 @@ export default function CartDrawer() {
           {/* Footer & Checkout Panel */}
           {cart.length > 0 && (
             <div className="p-6 border-t border-white/[0.06] bg-black/30 space-y-4">
-              {/* Promo code form */}
-              <form onSubmit={handleApplyVoucher} className="flex gap-2">
-                <div className="relative flex-1">
-                  <input
-                    type="text"
-                    placeholder="Mã VIP: EMERALD10"
-                    value={inputCode}
-                    onChange={(e) => setInputCode(e.target.value)}
-                    className="w-full pl-8 pr-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.1] text-xs font-mono uppercase text-white placeholder:text-white/40 focus:outline-none focus:border-[#d4af37]"
-                  />
-                  <FontAwesomeIcon icon={faTag} className="w-3 h-3 text-white/40 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                </div>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-xl bg-white/[0.08] hover:bg-[#d4af37] hover:text-black text-xs font-mono font-semibold transition-colors text-white"
-                >
-                  Áp Dụng
-                </button>
-              </form>
 
-              {discountRate > 0 && (
-                <div className="flex items-center justify-between text-xs font-mono text-emerald-300 bg-[#006039]/20 p-2.5 rounded-lg border border-[#006039]/40">
-                  <span className="flex items-center gap-1.5">
-                    <FontAwesomeIcon icon={faGem} className="w-3 h-3 text-[#d4af37]" /> Mã {promoCode} đã kích hoạt:
-                  </span>
-                  <span>-10%</span>
-                </div>
-              )}
 
               {/* Price summary */}
               <div className="space-y-1.5 text-xs font-mono">
@@ -245,16 +218,8 @@ export default function CartDrawer() {
                   <span>Tạm tính</span>
                   <span>{formatPrice(subtotalUSD, subtotalVND)}</span>
                 </div>
-                {discountRate > 0 && (
-                  <div className="flex justify-between text-emerald-400">
-                    <span>Ưu đãi VIP (10%)</span>
-                    <span>
-                      -{formatPrice(subtotalUSD * 0.1, subtotalVND * 0.1)}
-                    </span>
-                  </div>
-                )}
                 <div className="flex justify-between text-white/60">
-                  <span>Vận chuyển xe bọc thép</span>
+                  <span>Vận chuyển</span>
                   <span className="text-emerald-400 font-semibold">MIỄN PHÍ</span>
                 </div>
                 <div className="flex justify-between text-base font-serif font-normal text-white pt-2 border-t border-white/[0.06]">
@@ -268,22 +233,36 @@ export default function CartDrawer() {
               {/* Checkout Security Note */}
               <div className="flex items-center gap-2 text-[11px] font-mono text-white/60 bg-white/[0.03] p-2.5 rounded-xl border border-white/[0.06]">
                 <FontAwesomeIcon icon={faTruck} className="w-3.5 h-3.5 text-[#d4af37] shrink-0" />
-                <span>Giao hàng tận nơi bởi vệ sĩ chuyên trách bảo mật cao cấp.</span>
+                <span>Đóng gói cẩn thận và giao hàng tận nơi an toàn.</span>
               </div>
 
               {/* Primary VIP Checkout CTA */}
-              <Link
-                href="/checkout"
-                onClick={() => {
-                  watchAudio.click();
-                  setIsCartOpen(false);
-                }}
-                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#d4af37] via-[#c69f2e] to-[#b38f28] text-black font-mono text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl shadow-[#d4af37]/25 hover:scale-102 active:scale-98 transition-all cursor-pointer text-center"
-              >
-                <FontAwesomeIcon icon={faShieldHalved} className="w-3.5 h-3.5 text-black" />
-                <span>Tiến Hành Thanh Toán Bảo Mật VIP</span>
-                <FontAwesomeIcon icon={faArrowRight} className="w-3 h-3 text-black" />
-              </Link>
+              <div className="flex gap-2">
+                <Link
+                  href="/cart"
+                  onClick={() => {
+                    watchAudio.click();
+                    setIsCartOpen(false);
+                  }}
+                  className="flex-1 py-3.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.1] text-stone-200 hover:text-white font-mono text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer text-center"
+                >
+                  <FontAwesomeIcon icon={faBagShopping} className="w-3.5 h-3.5 text-[#d4af37]" />
+                  <span>Xem Giỏ Hàng</span>
+                </Link>
+
+                <Link
+                  href="/checkout"
+                  onClick={() => {
+                    watchAudio.click();
+                    setIsCartOpen(false);
+                  }}
+                  className="flex-[1.4] py-3.5 rounded-xl bg-gradient-to-r from-[#d4af37] via-[#c69f2e] to-[#b38f28] hover:from-[#e5c158] hover:to-[#c49f32] text-black font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-xl shadow-[#d4af37]/25 hover:scale-102 active:scale-98 transition-all cursor-pointer text-center"
+                >
+                  <FontAwesomeIcon icon={faShieldHalved} className="w-3.5 h-3.5 text-black" />
+                  <span>Thanh Toán</span>
+                  <FontAwesomeIcon icon={faArrowRight} className="w-3 h-3 text-black" />
+                </Link>
+              </div>
             </div>
           )}
         </div>
@@ -298,13 +277,13 @@ export default function CartDrawer() {
             </div>
 
             <div className="text-xs font-mono uppercase tracking-widest text-[#d4af37] mb-1">
-              Hóa Đơn Bảo Mật #CHRONO-2026-9812
+              Hóa Đơn Đặt Hàng #CHRONO-2026-9812
             </div>
             <h3 className="font-serif text-2xl font-normal text-white">
               Đơn Hàng Đã Được Tiếp Nhận
             </h3>
             <p className="mt-2 text-xs text-white/70 leading-relaxed font-light">
-              Kính gửi Quý khách <strong className="text-[#d4af37] font-semibold">{customerName || "VIP"}</strong>, chuyên viên bảo an cao cấp của BRU_WATCH sẽ liên hệ qua số điện thoại <strong className="text-white font-semibold">{customerPhone || "của bạn"}</strong> trong vòng 15 phút để sắp xếp lịch giao đồng hồ bằng xe chuyên dụng bọc thép.
+              Kính gửi Quý khách <strong className="text-[#d4af37] font-semibold">{customerName || "Quý khách"}</strong>, bộ phận chăm sóc khách hàng của BRU_WATCH sẽ liên hệ qua số điện thoại <strong className="text-white font-semibold">{customerPhone || "của bạn"}</strong> trong thời gian sớm nhất để xác nhận và giao đồng hồ an toàn.
             </p>
 
             <div className="mt-6 p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] text-left text-xs font-mono space-y-1.5">
@@ -321,7 +300,7 @@ export default function CartDrawer() {
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-white/50">Bảo hiểm hàng hải:</span>
+                <span className="text-white/50">Bảo hiểm vận chuyển:</span>
                 <span className="text-emerald-400 font-semibold">100% Giá trị</span>
               </div>
             </div>

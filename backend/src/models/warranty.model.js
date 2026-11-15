@@ -40,9 +40,16 @@ export const Warranty = sequelize.define('Warranty', {
     field: 'Ngay_Het_Bao_Hanh',
   },
   status: {
-    type: DataTypes.ENUM('active', 'expired', 'void'),
+    type: DataTypes.ENUM('pending_activation', 'active', 'expired', 'void'),
     allowNull: false,
-    defaultValue: 'active',
+    defaultValue: 'pending_activation',
+    comment: 'pending_activation: Chờ khách kiểm tra đúng Seri và bấm Active',
+  },
+  activatedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    field: 'activated_at',
+    comment: 'Thời điểm khách hàng nhấn nút Active xác nhận đúng Seri',
   },
 }, {
   tableName: 'warranties',

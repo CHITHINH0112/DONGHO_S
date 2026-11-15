@@ -14,7 +14,7 @@ export interface UserAddress {
   address: string;
   city: string;
   isDefault: boolean;
-  tag: "Tư gia" | "Dinh thự" | "Văn phòng VIP";
+  tag?: "Tư gia" | "Dinh thự" | "Văn phòng VIP" | "Boutique" | string;
 }
 
 export interface UserOrder {
@@ -615,7 +615,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       paymentStatus: orderData.paymentMethod === "bank_transfer_qr" ? "pending" : "pending",
       shippingAddress: orderData.shippingAddress,
       armoredTrackingCode: `BRINKS-SEC-${Math.floor(1000 + Math.random() * 9000)}VN`,
-      securityGuardNotes: "Đang phân bổ xe bọc thép chuyên dụng và đội bảo an bàn giao tận tay.",
+      securityGuardNotes: "Đang đóng gói niêm phong cẩn thận và bàn giao cho đơn vị vận chuyển.",
     };
 
     const updatedOrders = [newOrder, ...orders];

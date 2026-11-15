@@ -7,6 +7,11 @@ export type PermissionKey =
   | 'DASHBOARD_FINANCIALS'
   | 'PRODUCTS_VIEW'
   | 'PRODUCTS_MANAGE'
+  | 'BRANDS_MANAGE'
+  | 'CATEGORIES_MANAGE'
+  | 'FEATURES_MANAGE'
+  | 'INVENTORY_VIEW'
+  | 'INVENTORY_CONFIRM'
   | 'ORDERS_VIEW'
   | 'ORDERS_CREATE'
   | 'SHIFTS_VIEW'
@@ -28,6 +33,11 @@ const POSITION_PERMISSIONS: Record<string, PermissionKey[]> = {
     'DASHBOARD_FINANCIALS',
     'PRODUCTS_VIEW',
     'PRODUCTS_MANAGE',
+    'BRANDS_MANAGE',
+    'CATEGORIES_MANAGE',
+    'FEATURES_MANAGE',
+    'INVENTORY_VIEW',
+    'INVENTORY_CONFIRM',
     'ORDERS_VIEW',
     'ORDERS_CREATE',
     'SHIFTS_VIEW',
@@ -56,15 +66,13 @@ const POSITION_PERMISSIONS: Record<string, PermissionKey[]> = {
     'APPROVALS_REQUEST',
   ],
 
-  // Warehouse: Thủ kho, quản lý serial và nhập hàng
+  // Warehouse: Thủ kho (Chỉ kiểm định đối chiếu Serial, tình trạng hàng và xác nhận nhập kho)
   warehouse: [
     'DASHBOARD_VIEW',
-    'PRODUCTS_VIEW',
-    'PRODUCTS_MANAGE',
+    'PRODUCTS_VIEW', // Chỉ xem danh sách và thông số mẫu đồng hồ (Read-only, KHÔNG được tạo/sửa/xóa)
+    'INVENTORY_VIEW', // Vào trang Kiểm Kho & Serial
+    'INVENTORY_CONFIRM', // Xác nhận serial & báo sai lệch
     'ORDERS_VIEW', // Xem đơn để điều phối đóng gói & xuất kho
-    'WARRANTIES_VIEW',
-    'APPROVALS_VIEW',
-    'APPROVALS_REQUEST',
   ],
 
   // Technician: Kỹ thuật viên đồng hồ, phòng lab bảo hành
@@ -82,9 +90,10 @@ const POSITION_PERMISSIONS: Record<string, PermissionKey[]> = {
 const ROUTE_PERMISSIONS: Record<string, PermissionKey> = {
   '/': 'DASHBOARD_VIEW',
   '/products': 'PRODUCTS_VIEW',
-  '/brands': 'PRODUCTS_VIEW',
-  '/categories': 'PRODUCTS_VIEW',
-  '/features': 'PRODUCTS_VIEW',
+  '/inventory': 'INVENTORY_VIEW',
+  '/brands': 'BRANDS_MANAGE',
+  '/categories': 'CATEGORIES_MANAGE',
+  '/features': 'FEATURES_MANAGE',
   '/orders': 'ORDERS_VIEW',
   '/shifts': 'SHIFTS_VIEW',
   '/warranties': 'WARRANTIES_VIEW',

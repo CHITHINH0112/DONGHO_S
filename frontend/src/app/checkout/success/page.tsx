@@ -148,7 +148,7 @@ function CheckoutSuccessContent() {
             </div>
             <div>
               <h3 className="font-serif text-lg font-normal text-foreground">
-                Tiến Trình Bàn Giao Xe Bọc Thép
+                Tiến Trình Giao Nhận Hàng
               </h3>
               <p className="text-xs font-mono text-muted-foreground">
                 Mã vận đơn bảo an: <strong className="text-[#d4af37]">{currentOrder.armoredTrackingCode}</strong>
@@ -169,9 +169,9 @@ function CheckoutSuccessContent() {
 
             <div className="p-4 rounded-2xl bg-muted/30 border border-border text-xs space-y-1">
               <span className="text-[10px] font-mono uppercase text-muted-foreground block">
-                Bước 2 • Vệ Sĩ Hộ Tống
+                Bước 2 • Vận Chuyển
               </span>
-              <strong className="text-foreground block font-serif">Xe Bọc Thép Khởi Hành</strong>
+              <strong className="text-foreground block font-serif">Đang Giao Hàng</strong>
               <p className="text-muted-foreground text-[11px] font-light">
                 Di chuyển theo tuyến đường bí mật được mã hóa thời gian thực.
               </p>

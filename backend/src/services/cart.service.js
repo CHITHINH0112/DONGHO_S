@@ -4,6 +4,7 @@ import {
   ProductVariant,
   Product,
   ProductVariantImage,
+  SerialNumber,
 } from '../models/index.js';
 
 export const getOrCreateCart = async (userId) => {
@@ -29,6 +30,11 @@ export const getOrCreateCart = async (userId) => {
               {
                 model: ProductVariantImage,
                 as: 'images',
+              },
+              {
+                model: SerialNumber,
+                as: 'serialNumbers',
+                attributes: ['id', 'status'],
               },
             ],
           },
@@ -59,12 +65,19 @@ export const getOrCreateCart = async (userId) => {
 export const addItemToCart = async (userId, variantId, quantity = 1) => {
   const [cart] = await Cart.findOrCreate({ where: { userId } });
 
-  const variant = await ProductVariant.findByPk(variantId);
+  const variant = await ProductVariant.findByPk(variantId, {
+    include: [{ model: SerialNumber, as: 'serialNumbers', attributes: ['id', 'status'] }],
+  });
   if (!variant || variant.status !== 'active') {
     const error = new Error('Biến thể sản phẩm không tồn tại hoặc đã ngừng bán');
     error.statusCode = 400;
     throw error;
   }
+
+  // Đếm tồn kho khả dụng nếu có quản lý serial
+  const availableStock = variant.serialNumbers && variant.serialNumbers.length > 0
+    ? variant.serialNumbers.filter(s => s.status === 'available').length
+    : 99;
 
   let cartItem = await CartItem.findOne({
     where: {
@@ -73,8 +86,17 @@ export const addItemToCart = async (userId, variantId, quantity = 1) => {
     },
   });
 
+  const currentQty = cartItem ? cartItem.quantity : 0;
+  const targetQty = currentQty + Number(quantity);
+
+  if (availableStock > 0 && targetQty > availableStock) {
+    const error = new Error(`Kho chỉ còn ${availableStock} sản phẩm khả dụng cho phiên bản này`);
+    error.statusCode = 400;
+    throw error;
+  }
+
   if (cartItem) {
-    cartItem.quantity += Number(quantity);
+    cartItem.quantity = targetQty;
     await cartItem.save();
   } else {
     cartItem = await CartItem.create({
@@ -92,6 +114,11 @@ export const updateItemQuantity = async (userId, itemId, quantity) => {
 
   const cartItem = await CartItem.findOne({
     where: { id: itemId, cartId: cart.id },
+    include: [{
+      model: ProductVariant,
+      as: 'variant',
+      include: [{ model: SerialNumber, as: 'serialNumbers', attributes: ['id', 'status'] }],
+    }],
   });
 
   if (!cartItem) {
@@ -100,10 +127,21 @@ export const updateItemQuantity = async (userId, itemId, quantity) => {
     throw error;
   }
 
-  if (Number(quantity) <= 0) {
+  const newQty = Number(quantity);
+  if (newQty <= 0) {
     await cartItem.destroy();
   } else {
-    cartItem.quantity = Number(quantity);
+    const availableStock = cartItem.variant?.serialNumbers && cartItem.variant.serialNumbers.length > 0
+      ? cartItem.variant.serialNumbers.filter(s => s.status === 'available').length
+      : 99;
+
+    if (availableStock > 0 && newQty > availableStock) {
+      const error = new Error(`Kho chỉ còn ${availableStock} sản phẩm khả dụng cho phiên bản này`);
+      error.statusCode = 400;
+      throw error;
+    }
+
+    cartItem.quantity = newQty;
     await cartItem.save();
   }
 

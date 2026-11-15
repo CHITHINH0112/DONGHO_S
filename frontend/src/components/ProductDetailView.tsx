@@ -8,6 +8,7 @@ import { useCart } from "@/context/CartContext";
 import { watchAudio } from "@/utils/audio";
 import RolexCrown from "@/components/RolexCrown";
 import ProductCard from "@/components/ProductCard";
+import { mapDbProductToWatchItem } from "@/utils/productMapper";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faChevronRight,
@@ -66,7 +67,12 @@ export default function ProductDetailView({ watch }: ProductDetailViewProps) {
   const [selectedVariant, setSelectedVariant] = useState<WatchVariant | null>(
     variants.length > 0 ? variants[0] : null
   );
-  const [activeImage, setActiveImage] = useState(watch.image);
+  const [activeImage, setActiveImage] = useState<string>(() => {
+    if (variants.length > 0 && variants[0].images && variants[0].images.length > 0) {
+      return variants[0].images[0];
+    }
+    return watch.image;
+  });
   const [isCopied, setIsCopied] = useState(false);
   const [isZooming, setIsZooming] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 50, y: 50 });
@@ -97,14 +103,15 @@ export default function ProductDetailView({ watch }: ProductDetailViewProps) {
     setSelectedVariant(v);
     if (v.images && v.images.length > 0) {
       setActiveImage(v.images[0]);
+    } else {
+      setActiveImage(watch.image);
     }
   };
 
   const gallery = useMemo(() => {
+    // Khi chọn biến thể: chỉ hiển thị hình biến thể đó thôi (không kèm ảnh đại diện product)
     if (selectedVariant && Array.isArray(selectedVariant.images) && selectedVariant.images.length > 0) {
-      const set = new Set([...selectedVariant.images]);
-      if (watch.image) set.add(watch.image);
-      return Array.from(set);
+      return Array.from(new Set(selectedVariant.images));
     }
     const combined = [
       watch.image,
@@ -116,10 +123,54 @@ export default function ProductDetailView({ watch }: ProductDetailViewProps) {
   const isFavorited = isInWishlist(watch.id);
   const isCompared = compareList.some((w) => w.id === watch.id);
 
-  // Related watches from other models
+  // Tải danh sách sản phẩm động từ API phục vụ gợi ý liên quan
+  const [dbRelatedWatches, setDbRelatedWatches] = useState<WatchItem[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchRelated = async () => {
+      try {
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:5000';
+        const res = await fetch(`${backendUrl}/api/v1/products?limit=24&status=active`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json?.success && Array.isArray(json?.data)) {
+            const mapped = json.data
+              .map(mapDbProductToWatchItem)
+              .filter((w: WatchItem) => String(w.id) !== String(watch.id));
+            if (isMounted && mapped.length > 0) {
+              setDbRelatedWatches(mapped);
+            }
+          }
+        }
+      } catch (err) {
+        // Fallback to static mock watches
+      }
+    };
+    fetchRelated();
+    return () => { isMounted = false; };
+  }, [watch.id]);
+
+  // Gợi ý các sản phẩm có sự liên quan về hãng hoặc mức giá ngang nhau
   const relatedWatches = useMemo(() => {
-    return WATCHES.filter((w) => w.id !== watch.id).slice(0, 3);
-  }, [watch, selectedVariant]);
+    // Chỉ gợi ý sản phẩm thực tế trong Database
+    const pool = dbRelatedWatches;
+
+    const targetPrice = currentPriceVND || watch.priceVND || 0;
+    const targetBrand = (watch.brand || '').toLowerCase().trim();
+
+    // Tính điểm ưu tiên: cùng hãng (-2 điểm), chênh lệch giá nhỏ nhất (+ tỉ lệ chênh lệch)
+    const scored = pool.map((item) => {
+      const isSameBrand = (item.brand || '').toLowerCase().trim() === targetBrand;
+      const priceDiff = Math.abs((item.priceVND || 0) - targetPrice);
+      const priceRatio = targetPrice > 0 ? priceDiff / targetPrice : 1;
+      const score = (isSameBrand ? -2.0 : 0) + priceRatio;
+      return { item, score };
+    });
+
+    scored.sort((a, b) => a.score - b.score);
+    return scored.slice(0, 3).map((s) => s.item);
+  }, [watch, dbRelatedWatches, currentPriceVND]);
 
   // Handle sticky action bar on scroll
   useEffect(() => {
@@ -418,20 +469,55 @@ export default function ProductDetailView({ watch }: ProductDetailViewProps) {
             )}
 
 
-            {/* Description */}
-            <p className="text-xs sm:text-sm text-muted-foreground font-light leading-relaxed font-sans">
-              {watch.description}
-            </p>
-
-            {/* Key Highlights */}
-            <div className="space-y-2.5 py-1">
-              {watch.highlights.map((h, i) => (
-                <div key={i} className="flex items-start gap-2.5 text-xs text-foreground/90">
-                  <FontAwesomeIcon icon={faCheck} className="w-3.5 h-3.5 text-[#d4af37] shrink-0 mt-0.5" />
-                  <span>{h}</span>
+            {/* Khung Riêng: Mô Tả Sản Phẩm */}
+            {watch.description && (
+              <div className="p-5 rounded-2xl bg-card border border-[#d4af37]/25 shadow-sm space-y-2.5">
+                <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-[#d4af37] font-semibold pb-2 border-b border-border/40">
+                  <FontAwesomeIcon icon={faCircleInfo} className="w-3.5 h-3.5 text-[#d4af37]" />
+                  <span>Mô Tả Sản Phẩm</span>
                 </div>
-              ))}
-            </div>
+                <p className="text-xs sm:text-sm text-muted-foreground font-light leading-relaxed font-sans whitespace-pre-line">
+                  {watch.description}
+                </p>
+              </div>
+            )}
+
+            {/* Khung Riêng: Các Tính Năng Của Sản Phẩm */}
+            {((watch.features && watch.features.length > 0) || (watch.highlights && watch.highlights.length > 0)) && (
+              <div className="p-5 rounded-2xl bg-card border border-[#d4af37]/25 shadow-sm space-y-3">
+                <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-[#d4af37] font-semibold pb-2 border-b border-border/40">
+                  <FontAwesomeIcon icon={faWandMagicSparkles} className="w-3.5 h-3.5 text-[#d4af37]" />
+                  <span>Các Tính Năng Của Sản Phẩm</span>
+                </div>
+
+                {/* Badges tính năng */}
+                {watch.features && watch.features.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-0.5">
+                    {watch.features.map((feat) => (
+                      <span
+                        key={feat.id}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-xs text-emerald-400 font-medium"
+                      >
+                        <FontAwesomeIcon icon={faCheck} className="w-3 h-3 text-emerald-400" />
+                        <span>{feat.name}</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Điểm nhấn sản phẩm */}
+                {watch.highlights && watch.highlights.length > 0 && (
+                  <div className="space-y-2 pt-1">
+                    {watch.highlights.map((h, i) => (
+                      <div key={i} className="flex items-start gap-2.5 text-xs text-foreground/90">
+                        <FontAwesomeIcon icon={faCheck} className="w-3.5 h-3.5 text-[#d4af37] shrink-0 mt-0.5" />
+                        <span>{h}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
 
             {/* Bảng Tóm Tắt Thông Số Cốt Lõi (Quick Specs Table) */}
@@ -441,13 +527,9 @@ export default function ProductDetailView({ watch }: ProductDetailViewProps) {
                   <FontAwesomeIcon icon={faSliders} className="w-3.5 h-3.5 text-[#d4af37]" />
                   <span>Bảng Thông Số Kỹ Thuật Nhanh</span>
                 </span>
-                <a
-                  href="#full-specifications-table"
-                  className="text-[11px] font-mono text-muted-foreground hover:text-[#d4af37] transition-colors flex items-center gap-1 group"
-                >
-                  <span>Xem hồ sơ đầy đủ</span>
-                  <FontAwesomeIcon icon={faChevronRight} className="text-[9px] group-hover:translate-x-0.5 transition-transform" />
-                </a>
+                <span className="text-[11px] font-mono text-muted-foreground">
+                  Chuẩn mực chế tác
+                </span>
               </div>
               <div className="divide-y divide-white/[0.05] text-xs font-mono">
                 <div className="flex items-center justify-between py-2 px-3.5 hover:bg-white/[0.02] transition-colors">
@@ -503,13 +585,12 @@ export default function ProductDetailView({ watch }: ProductDetailViewProps) {
                 <div className="flex items-center justify-between py-2 px-3.5 hover:bg-white/[0.02] transition-colors">
                   <span className="text-muted-foreground flex items-center gap-2">
                     <FontAwesomeIcon icon={faShieldHalved} className="w-3 h-3 text-emerald-400" />
-                    <span>Bảo Hành Toàn Cầu</span>
+                    <span>Bảo Hành </span>
                   </span>
                   <span className="text-emerald-400 font-semibold">{watch.warrantyMonths ? watch.warrantyMonths + ' Tháng' : "24 Tháng"} Chính Hãng</span>
                 </div>
               </div>
             </div>
-
             {/* Actions & Quantity */}
             <div className="pt-4 border-t border-border space-y-3.5">
               <div className="flex items-center gap-3">
@@ -548,46 +629,7 @@ export default function ProductDetailView({ watch }: ProductDetailViewProps) {
                   <FontAwesomeIcon icon={faBagShopping} className="w-4 h-4" />
                   <span>Thêm Vào Giỏ Hàng & Đặt Mua</span>
                 </button>
-
-                {/* Wishlist Button */}
-                <button
-                  onClick={() => toggleWishlist(watch.id)}
-                  className="w-12 h-12 rounded-2xl border border-[#d4af37]/30 flex items-center justify-center hover:bg-rose-500/10 text-foreground transition-all cursor-pointer shrink-0"
-                  title="Lưu vào danh sách yêu thích"
-                  aria-label="Thêm vào yêu thích"
-                >
-                  <FontAwesomeIcon
-                    icon={isFavorited ? faHeart : faHeartRegular}
-                    className={`w-4 h-4 ${isFavorited ? "text-rose-500" : "text-muted-foreground"
-                      }`}
-                  />
-                </button>
-
-                {/* Compare Button */}
-                <button
-                  onClick={() => toggleCompare(watch)}
-                  className={`w-12 h-12 rounded-2xl border flex items-center justify-center transition-all cursor-pointer shrink-0 ${isCompared
-                    ? "bg-[#d4af37] text-black border-[#d4af37]"
-                    : "border-[#d4af37]/30 text-muted-foreground hover:text-foreground hover:bg-black/[0.04] dark:hover:bg-white/[0.04]"
-                    }`}
-                  title="So sánh kỹ thuật"
-                  aria-label="So sánh"
-                >
-                  <FontAwesomeIcon icon={faScaleBalanced} className="w-4 h-4" />
-                </button>
               </div>
-
-              {/* VIP Salon Booking Appointment */}
-              <button
-                onClick={() => {
-                  watchAudio.click();
-                  setIsVipModalOpen(true);
-                }}
-                className="w-full py-3.5 rounded-2xl border border-[#d4af37]/40 hover:bg-[#d4af37]/10 text-[#d4af37] font-mono text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer"
-              >
-                <FontAwesomeIcon icon={faCalendarCheck} className="w-4 h-4" />
-                <span>Đặt Lịch Tiếp Đón Riêng Tư Tại VIP Salon (Hà Nội, Sài Gòn & Geneva)</span>
-              </button>
             </div>
 
             {/* Guarantees & Security Privileges */}
@@ -599,8 +641,8 @@ export default function ProductDetailView({ watch }: ProductDetailViewProps) {
               </div>
               <div className="p-3.5 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-border">
                 <FontAwesomeIcon icon={faTruck} className="w-4 h-4 text-[#d4af37] mx-auto mb-1.5 block" />
-                <span className="text-[11px] block text-foreground font-medium">Xe Bọc Thép</span>
-                <span className="text-[9px] text-muted-foreground">Giao tận tư gia</span>
+                <span className="text-[11px] block text-foreground font-medium">Giao Hàng Tận Nơi</span>
+                <span className="text-[9px] text-muted-foreground">An toàn & bảo mật</span>
               </div>
               <div className="p-3.5 rounded-2xl bg-black/[0.02] dark:bg-white/[0.02] border border-border">
                 <FontAwesomeIcon icon={faAward} className="w-4 h-4 text-emerald-500 mx-auto mb-1.5 block" />
@@ -612,423 +654,6 @@ export default function ProductDetailView({ watch }: ProductDetailViewProps) {
         </div>
       </section>
 
-
-      {/* Section 1: Comprehensive Specifications Sheet (Bảng Quy Chuẩn Thông Số Kỹ Thuật Toàn Diện) */}
-      <section id="full-specifications-table" className="py-20 bg-secondary/50 border-t border-b border-[#d4af37]/20 relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-6 sm:px-12 relative z-10">
-          <div className="max-w-3xl mx-auto text-center mb-14">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-black/[0.03] dark:bg-white/[0.03] border border-[#d4af37]/35 text-[#d4af37] text-xs font-mono uppercase tracking-[0.2em] mb-4 shadow-sm">
-              <FontAwesomeIcon icon={faSliders} className="w-3.5 h-3.5 text-[#d4af37]" />
-              <span>Hồ Sơ Quy Chuẩn Chế Tác</span>
-            </div>
-            <h2 className="font-serif text-3xl sm:text-4xl font-normal text-foreground">
-              Bảng Thông Số Kỹ Thuật Toàn Diện <span className="text-[#d4af37] italic">{watch.name}</span>
-            </h2>
-            <p className="mt-3 text-xs sm:text-sm text-muted-foreground font-light leading-relaxed font-sans max-w-2xl mx-auto">
-              Tất cả kích thước hình học, vật liệu kim loại quý, cỗ máy vi cơ khí và tiêu chuẩn hoàn thiện thủ công được chuẩn hóa thành bảng thông số chi tiết dưới đây.
-            </p>
-          </div>
-
-          {/* Master 4-Quadrant Specifications Table */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* BẢNG 1: THÂN VỎ, KÍNH & HÌNH HỌC */}
-            <div className="rounded-3xl bg-card border border-[#d4af37]/25 shadow-lg overflow-hidden flex flex-col justify-between">
-              <div>
-                <div className="px-6 py-4 bg-black/[0.03] dark:bg-white/[0.02] border-b border-[#d4af37]/20 flex items-center justify-between">
-                  <h3 className="font-serif text-base font-semibold text-foreground flex items-center gap-2.5">
-                    <FontAwesomeIcon icon={faCompass} className="w-4 h-4 text-[#d4af37]" />
-                    <span>Thân Vỏ, Mặt Kính, Vành Niềng & Kích Thước</span>
-                  </h3>
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-[#d4af37] px-2 py-0.5 rounded bg-[#d4af37]/10 border border-[#d4af37]/20">
-                    Hình Học & Kim Loại
-                  </span>
-                </div>
-                <div className="divide-y divide-white/[0.04] text-xs font-mono">
-                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
-                    <span className="text-muted-foreground font-sans">Đường kính mặt số (Diameter)</span>
-                    <span className="text-foreground font-bold">{watch.specs.diameter}</span>
-                  </div>
-                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
-                    <span className="text-muted-foreground font-sans">Bề dày thân vỏ (Thickness)</span>
-                    <span className="text-foreground font-bold">{watch.specs.thickness}</span>
-                  </div>
-                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
-                    <span className="text-muted-foreground font-sans">Chất liệu thân vỏ (Case Material)</span>
-                    <span className="text-foreground font-semibold text-right max-w-[260px] truncate">{watch.specs.caseMaterial}</span>
-                  </div>
-                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
-                    <span className="text-muted-foreground font-sans">Chất liệu Niềng (Bezel)</span>
-                    <span className="text-foreground font-semibold text-right max-w-[260px] truncate">{watch.specs.bezel}</span>
-                  </div>
-                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
-                    <span className="text-muted-foreground font-sans">Chất liệu Mặt kính (Crystal)</span>
-                    <span className="text-foreground font-semibold text-right max-w-[260px] truncate">{watch.specs.crystal}</span>
-                  </div>
-                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
-                    <span className="text-muted-foreground font-sans">Độ chịu áp suất nước</span>
-                    <span className="text-emerald-400 font-bold">{watch.specs.waterResistance}</span>
-                  </div>
-                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
-                    <span className="text-muted-foreground font-sans">Kiểu dáng & Đối tượng</span>
-                    <span className="text-foreground font-semibold">
-                      {watch.gender === 'male' ? 'Đồng hồ Nam' : watch.gender === 'female' ? 'Đồng hồ Nữ' : 'Unisex (Nam & Nữ)'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* BẢNG 2: TRÁI TIM CỖ MÁY VI CƠ KHÍ */}
-            <div className="rounded-3xl bg-card border border-[#d4af37]/25 shadow-lg overflow-hidden flex flex-col justify-between">
-              <div>
-                <div className="px-6 py-4 bg-black/[0.03] dark:bg-white/[0.02] border-b border-[#d4af37]/20 flex items-center justify-between">
-                  <h3 className="font-serif text-base font-semibold text-foreground flex items-center gap-2.5">
-                    <FontAwesomeIcon icon={faClock} className="w-4 h-4 text-[#d4af37]" />
-                    <span>Trái Tim Cỗ Máy Vi Cơ Khí</span>
-                  </h3>
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-[#d4af37] px-2 py-0.5 rounded bg-[#d4af37]/10 border border-[#d4af37]/20">
-                    In-House Calibre
-                  </span>
-                </div>
-                <div className="divide-y divide-white/[0.04] text-xs font-mono">
-                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
-                    <span className="text-muted-foreground font-sans">Loại chuyển động (Movement)</span>
-                    <span className="text-foreground font-bold">{watch.specs.movement}</span>
-                  </div>
-                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
-                    <span className="text-muted-foreground font-sans">Mã định danh Calibre</span>
-                    <span className="text-[#d4af37] font-bold">{watch.specs.calibre}</span>
-                  </div>
-                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
-                    <span className="text-muted-foreground font-sans">Thời lượng trữ cót (Power Reserve)</span>
-                    <span className="text-[#d4af37] font-bold">{watch.specs.powerReserve}</span>
-                  </div>
-                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
-                    <span className="text-muted-foreground font-sans">Tần số dao động (Frequency)</span>
-                    <span className="text-foreground font-bold">{watch.specs.frequency}</span>
-                  </div>
-                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
-                    <span className="text-muted-foreground font-sans">Số chân kính Ruby (Jewels)</span>
-                    <span className="text-foreground font-bold">{watch.specs.jewels}</span>
-                  </div>
-                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
-                    <span className="text-muted-foreground font-sans">Kỹ nghệ hoàn thiện cỗ máy</span>
-                    <span className="text-foreground font-semibold text-right">Vát mép Anglage 45° & Côtes de Genève</span>
-                  </div>
-                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
-                    <span className="text-muted-foreground font-sans">Chứng chỉ giám định sai số</span>
-                    <span className="text-emerald-400 font-bold">COSC Official Chronometer (Swiss)</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* BẢNG 3: DÂY ĐEO, KHÓA & PHIÊN BẢN MẶT SỐ */}
-            <div className="rounded-3xl bg-card border border-[#d4af37]/25 shadow-lg overflow-hidden flex flex-col justify-between">
-              <div>
-                <div className="px-6 py-4 bg-black/[0.03] dark:bg-white/[0.02] border-b border-[#d4af37]/20 flex items-center justify-between">
-                  <h3 className="font-serif text-base font-semibold text-foreground flex items-center gap-2.5">
-                    <FontAwesomeIcon icon={faFingerprint} className="w-4 h-4 text-[#d4af37]" />
-                    <span>Dây Đeo, Khóa & Màu Mặt Số</span>
-                  </h3>
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-[#d4af37] px-2 py-0.5 rounded bg-[#d4af37]/10 border border-[#d4af37]/20">
-                    Biến Thể & Hoàn Thiện
-                  </span>
-                </div>
-                <div className="divide-y divide-white/[0.04] text-xs font-mono">
-                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
-                    <span className="text-muted-foreground font-sans">Chất liệu dây đeo (Strap Material)</span>
-                    <span className="text-[#d4af37] font-bold text-right">{currentStrap}</span>
-                  </div>
-                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
-                    <span className="text-muted-foreground font-sans">Loại khóa an toàn (Clasp)</span>
-                    <span className="text-foreground font-semibold">{watch.specs.clasp}</span>
-                  </div>
-                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
-                    <span className="text-muted-foreground font-sans">Màu sắc mặt số (Đang chọn)</span>
-                    <span className="text-foreground font-bold">{currentDial}</span>
-                  </div>
-                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
-                    <span className="text-muted-foreground font-sans">Mã định danh phiên bản (SKU)</span>
-                    <span className="text-foreground font-bold">{currentSku}</span>
-                  </div>
-                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
-                    <span className="text-muted-foreground font-sans">Số tùy chọn biến thể có sẵn</span>
-                    <span className="text-foreground font-semibold">{variants.length > 0 ? variants.length + ' Tùy chọn phối màu' : '1 Phiên bản tiêu chuẩn'}</span>
-                  </div>
-                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
-                    <span className="text-muted-foreground font-sans">Tình trạng sẵn có</span>
-                    <span className={currentStock > 0 ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}>
-                      {currentStock > 0 ? 'Sẵn sàng bàn giao (' + currentStock + ' chiếc)' : 'Chế tác theo đơn'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* BẢNG 4: BẢO HÀNH & ĐẶC QUYỀN HAUTE HORLOGERIE */}
-            <div className="rounded-3xl bg-card border border-[#d4af37]/25 shadow-lg overflow-hidden flex flex-col justify-between">
-              <div>
-                <div className="px-6 py-4 bg-black/[0.03] dark:bg-white/[0.02] border-b border-[#d4af37]/20 flex items-center justify-between">
-                  <h3 className="font-serif text-base font-semibold text-foreground flex items-center gap-2.5">
-                    <FontAwesomeIcon icon={faShieldHalved} className="w-4 h-4 text-emerald-400" />
-                    <span>Chế Độ Bảo Hành & Đặc Quyền Salon</span>
-                  </h3>
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
-                    Haute Concierge
-                  </span>
-                </div>
-                <div className="divide-y divide-white/[0.04] text-xs font-mono">
-                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
-                    <span className="text-muted-foreground font-sans">Thời hạn bảo hành chính hãng</span>
-                    <span className="text-emerald-400 font-bold">
-                      {watch.warrantyMonths ? watch.warrantyMonths + ' Tháng' : "24 Tháng"} Toàn Cầu
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
-                    <span className="text-muted-foreground font-sans">Phạm vi bảo hành</span>
-                    <span className="text-foreground font-semibold text-right">Toàn bộ Salon BRU_WATCH & Thụy Sĩ</span>
-                  </div>
-                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
-                    <span className="text-muted-foreground font-sans">Hình thức vận chuyển bảo an</span>
-                    <span className="text-foreground font-semibold text-right">Xe bọc thép chuyên dụng hộ tống</span>
-                  </div>
-                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
-                    <span className="text-muted-foreground font-sans">Hồ sơ chứng thực đi kèm</span>
-                    <span className="text-foreground font-semibold text-right">Thẻ NFC số hóa, Sổ COSC, Hộp sơn mài</span>
-                  </div>
-                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
-                    <span className="text-muted-foreground font-sans">Chính sách kiểm định & thu đổi</span>
-                    <span className="text-foreground font-semibold text-right">Cam kết mua lại trọn đời theo thỏa ước</span>
-                  </div>
-                  <div className="flex items-center justify-between px-6 py-3.5 hover:bg-white/[0.02] transition-colors">
-                    <span className="text-muted-foreground font-sans">Tiếp đón thượng lưu</span>
-                    <span className="text-[#d4af37] font-semibold text-right">Phòng thử VIP riêng tư kèm Sommelier</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* DÒNG TÍNH NĂNG KỸ THUẬT NỔI BẬT (FEATURES BADGES) */}
-          {((watch.features && watch.features.length > 0) || (watch.highlights && watch.highlights.length > 0)) && (
-            <div className="mt-8 p-6 rounded-3xl bg-card border border-[#d4af37]/25 shadow-md">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-white/[0.05]">
-                <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-[#d4af37] font-semibold">
-                  <FontAwesomeIcon icon={faWandMagicSparkles} className="w-3.5 h-3.5 text-[#d4af37]" />
-                  <span>Tính Năng Chế Tác Đột Phá & Điểm Nhấn Kỹ Thuật</span>
-                </div>
-                <span className="text-[11px] font-mono text-muted-foreground">
-                  Được chứng thực bởi phòng thí nghiệm độc lập Thụy Sĩ
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-2.5">
-                {watch.features && watch.features.map((feat) => (
-                  <span
-                    key={feat.id}
-                    className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-[#00844e]/15 border border-emerald-500/25 text-xs text-emerald-300 font-medium"
-                  >
-                    <FontAwesomeIcon icon={faCheck} className="w-3 h-3 text-emerald-400" />
-                    <span>{feat.name}</span>
-                  </span>
-                ))}
-                {(!watch.features || watch.features.length === 0) && watch.highlights && watch.highlights.map((h, i) => (
-                  <span
-                    key={i}
-                    className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.08] text-xs text-stone-300 font-medium"
-                  >
-                    <FontAwesomeIcon icon={faCheck} className="w-3 h-3 text-[#d4af37]" />
-                    <span>{h}</span>
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
-
-
-      {/* Section 2: BRU_WATCH 4 Pillar Craftsmanship */}
-      <section className="py-24 max-w-7xl mx-auto px-6 sm:px-12">
-        <div className="max-w-3xl mb-16">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/[0.03] dark:bg-white/[0.03] border border-[#d4af37]/35 text-[#d4af37] text-xs font-mono uppercase tracking-[0.2em] mb-4">
-            <FontAwesomeIcon icon={faHandSparkles} className="w-3.5 h-3.5" />
-            <span>Nghệ Thuật Thủ Công Độc Bản</span>
-          </div>
-          <h2 className="font-serif text-3xl sm:text-4xl font-normal text-foreground">
-            Bốn Chuẩn Mực Hoàn Thiện <span className="italic text-[#d4af37]">Bất Hủ</span>
-          </h2>
-          <p className="mt-3 text-xs sm:text-sm text-muted-foreground font-light leading-relaxed font-sans">
-            Tại đẳng cấp BRU_WATCH, mỗi chi tiết dù bị che khuất dưới đáy máy cũng đều được nghệ nhân vát mép và đánh bóng bằng phương pháp truyền thống từ thế kỷ 18.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="p-7 rounded-3xl bg-card border border-[#d4af37]/25 shadow-md flex flex-col justify-between">
-            <div>
-              <div className="w-12 h-12 rounded-2xl bg-[#d4af37]/15 border border-[#d4af37]/30 flex items-center justify-center text-[#d4af37] text-lg mb-5">
-                <FontAwesomeIcon icon={faGem} />
-              </div>
-              <h3 className="font-serif text-lg font-bold text-foreground mb-2">
-                Vát Mép Anglage 45°
-              </h3>
-              <p className="text-xs text-muted-foreground leading-relaxed font-light font-sans">
-                Các mép kim loại được gọt vát chính xác 45 độ và đánh bóng gương bằng thanh gỗ gentian wood tạo độ tương phản ánh sáng tuyệt hảo.
-              </p>
-            </div>
-            <span className="text-[10px] font-mono uppercase tracking-widest text-[#d4af37] mt-6 block">
-              100% Thủ Công Bằng Tay
-            </span>
-          </div>
-
-          <div className="p-7 rounded-3xl bg-card border border-[#d4af37]/25 shadow-md flex flex-col justify-between">
-            <div>
-              <div className="w-12 h-12 rounded-2xl bg-[#d4af37]/15 border border-[#d4af37]/30 flex items-center justify-center text-[#d4af37] text-lg mb-5">
-                <FontAwesomeIcon icon={faFingerprint} />
-              </div>
-              <h3 className="font-serif text-lg font-bold text-foreground mb-2">
-                Côtes de Genève
-              </h3>
-              <p className="text-xs text-muted-foreground leading-relaxed font-light font-sans">
-                Họa tiết vân sóng lượn song song đặc trưng của ngành chế tác đồng hồ Geneva, phản chiếu ánh quang phổ đa chiều theo góc nghiêng.
-              </p>
-            </div>
-            <span className="text-[10px] font-mono uppercase tracking-widest text-[#d4af37] mt-6 block">
-              Dấu Ấn Thụy Sĩ 1755
-            </span>
-          </div>
-
-          <div className="p-7 rounded-3xl bg-card border border-[#d4af37]/25 shadow-md flex flex-col justify-between">
-            <div>
-              <div className="w-12 h-12 rounded-2xl bg-[#d4af37]/15 border border-[#d4af37]/30 flex items-center justify-center text-[#d4af37] text-lg mb-5">
-                <FontAwesomeIcon icon={faBolt} />
-              </div>
-              <h3 className="font-serif text-lg font-bold text-foreground mb-2">
-                Kim Xanh Nung Nhiệt 290°C
-              </h3>
-              <p className="text-xs text-muted-foreground leading-relaxed font-light font-sans">
-                Kim đồng hồ bằng thép được gia nhiệt thủ công tại nhiệt độ chính xác 290°C để tạo lớp oxit xanh coban bảo vệ chống ăn mòn vĩnh cửu.
-              </p>
-            </div>
-            <span className="text-[10px] font-mono uppercase tracking-widest text-[#d4af37] mt-6 block">
-              Màu Xanh Coban Tự Nhiên
-            </span>
-          </div>
-
-          <div className="p-7 rounded-3xl bg-card border border-[#d4af37]/25 shadow-md flex flex-col justify-between">
-            <div>
-              <div className="w-12 h-12 rounded-2xl bg-[#d4af37]/15 border border-[#d4af37]/30 flex items-center justify-center text-[#d4af37] text-lg mb-5">
-                <FontAwesomeIcon icon={faAward} />
-              </div>
-              <h3 className="font-serif text-lg font-bold text-foreground mb-2">
-                Chứng Chỉ Geneva Seal
-              </h3>
-              <p className="text-xs text-muted-foreground leading-relaxed font-light font-sans">
-                Triện kiểm định cao quý nhất của bang Geneva, đảm bảo 12 tiêu chuẩn kỹ nghệ khắt khe về độ chính xác và tính mỹ thuật hoàn hảo.
-              </p>
-            </div>
-            <span className="text-[10px] font-mono uppercase tracking-widest text-[#d4af37] mt-6 block">
-              Poinçon de Genève
-            </span>
-          </div>
-        </div>
-      </section>
-
-      {/* Section 3: The Royal Presentation Box & VIP Heritage Experience */}
-      <section className="py-20 bg-secondary/40 border-t border-[#d4af37]/20">
-        <div className="max-w-7xl mx-auto px-6 sm:px-12">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div className="space-y-6">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/[0.03] dark:bg-white/[0.03] border border-[#d4af37]/35 text-[#d4af37] text-xs font-mono uppercase tracking-[0.2em]">
-                <FontAwesomeIcon icon={faBoxOpen} className="w-3.5 h-3.5" />
-                <span>Nghi Thức Bàn Giao Hoàng Gia</span>
-              </div>
-
-              <h2 className="font-serif text-3xl sm:text-4xl font-normal text-foreground leading-tight">
-                Hộp Trưng Bày Khánh Tiết & <br className="hidden sm:inline" />
-                Bộ Đặc Quyền Toàn Cầu
-              </h2>
-
-              <p className="text-xs sm:text-sm text-muted-foreground font-light leading-relaxed font-sans">
-                Khi sở hữu cỗ máy thời gian tại BRU_WATCH, quý khách không chỉ nhận được một kiệt tác đồng hồ mà còn là trọn bộ di sản độc quyền dành riêng cho giới thượng lưu.
-              </p>
-
-              <div className="space-y-3 pt-2">
-                <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-card border border-border">
-                  <FontAwesomeIcon icon={faCheck} className="w-4 h-4 text-[#d4af37] mt-1 shrink-0" />
-                  <div>
-                    <h4 className="font-serif font-bold text-sm text-foreground">Hộp Gỗ Sơn Mài Quý Hiếm</h4>
-                    <p className="text-xs text-muted-foreground font-light font-sans mt-0.5">
-                      Gia công từ gỗ óc chó Thụy Sĩ nguyên khối, lót da cừu xanh lục bảo êm ái chống tĩnh điện.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-card border border-border">
-                  <FontAwesomeIcon icon={faCheck} className="w-4 h-4 text-[#d4af37] mt-1 shrink-0" />
-                  <div>
-                    <h4 className="font-serif font-bold text-sm text-foreground">Kính Lúp Phóng Đại 10x Của Thợ Đồng Hồ</h4>
-                    <p className="text-xs text-muted-foreground font-light font-sans mt-0.5">
-                      Trang bị kính lúp Bergeon Geneva mạ vàng để chiêm ngưỡng độ tinh xảo của cỗ máy tại tư gia.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3 p-3.5 rounded-2xl bg-card border border-border">
-                  <FontAwesomeIcon icon={faCheck} className="w-4 h-4 text-[#d4af37] mt-1 shrink-0" />
-                  <div>
-                    <h4 className="font-serif font-bold text-sm text-foreground">Thẻ Bảo Hành Điện Tử NFC & Thư Xác Thực</h4>
-                    <p className="text-xs text-muted-foreground font-light font-sans mt-0.5">
-                      Thẻ chip NFC mã hóa blockchain Thụy Sĩ kèm thư chúc mừng có chữ ký tay của Giám đốc Showroom.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* VIP Salon Private Invitation Card */}
-            <div className="p-8 sm:p-10 rounded-3xl bg-gradient-to-br from-[#0c1611] to-[#050a07] text-white border border-[#d4af37]/40 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-[#d4af37]/10 rounded-full blur-[90px] pointer-events-none" />
-
-              <div className="flex items-center justify-between mb-8">
-                <span className="text-[10px] font-mono uppercase tracking-[0.25em] text-[#d4af37]">
-                  ĐẶC QUYỀN THƯỢNG KHÁCH
-                </span>
-                <FontAwesomeIcon icon={faWineGlass} className="w-4 h-4 text-[#d4af37]" />
-              </div>
-
-              <h3 className="font-serif text-2xl sm:text-3xl font-normal text-white mb-3">
-                Tiếp Đón Riêng Tư Tại VIP Salon
-              </h3>
-
-              <p className="text-xs text-zinc-300 font-light leading-relaxed font-sans mb-8">
-                Thưởng thức Champagne Dom Pérignon và lắng nghe chuyên gia đồng hồ Geneva trực tiếp diễn giải lịch sử cỗ máy trong không gian bảo mật tuyệt đối tại Tràng Tiền Plaza hoặc Rex Hotel.
-              </p>
-
-              <div className="grid grid-cols-2 gap-3 mb-8 text-xs font-mono">
-                <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.08]">
-                  <span className="text-zinc-400 block text-[10px]">Hà Nội</span>
-                  <span className="font-bold text-white">Metropole Salon</span>
-                </div>
-                <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.08]">
-                  <span className="text-zinc-400 block text-[10px]">TP. Hồ Chí Minh</span>
-                  <span className="font-bold text-white">Rex Presidential</span>
-                </div>
-              </div>
-
-              <button
-                onClick={() => {
-                  watchAudio.click();
-                  setIsVipModalOpen(true);
-                }}
-                className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#d4af37] to-[#b38f28] hover:from-[#e5c158] hover:to-[#c49f32] text-black font-semibold text-xs font-mono uppercase tracking-widest shadow-xl cursor-pointer transition-all"
-              >
-                Đặt Lịch Hẹn Khánh Tiết VIP Ngay
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* Related Watches Recommendations */}
       {relatedWatches.length > 0 && (
@@ -1104,16 +729,7 @@ export default function ProductDetailView({ watch }: ProductDetailViewProps) {
               <span>Mua Ngay</span>
             </button>
 
-            <button
-              onClick={() => {
-                watchAudio.click();
-                setIsVipModalOpen(true);
-              }}
-              className="hidden sm:flex px-4 py-2.5 rounded-full border border-[#d4af37]/40 hover:bg-[#d4af37]/10 text-[#d4af37] text-xs font-mono font-semibold items-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <FontAwesomeIcon icon={faCalendarCheck} className="w-3 h-3" />
-              <span>Đặt VIP Salon</span>
-            </button>
+
           </div>
         </aside>
       )}

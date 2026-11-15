@@ -146,7 +146,7 @@ export default function ReviewsAndPress() {
           </div>
           <div className="flex flex-col items-center">
             <FontAwesomeIcon icon={faAward} className="w-6 h-6 text-[#006039] dark:text-[#00844e] mb-2.5" />
-            <span className="font-serif font-normal text-sm text-foreground dark:text-white">Vận Chuyển Bọc Thép</span>
+            <span className="font-serif font-normal text-sm text-foreground dark:text-white">Vận Chuyển Bảo Đảm</span>
             <span className="text-[11px] font-mono text-muted-foreground dark:text-white/50 font-light">Bảo mật tuyệt đối</span>
           </div>
         </div>

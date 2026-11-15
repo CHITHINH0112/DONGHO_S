@@ -4,8 +4,7 @@ import React, { useState, useEffect, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCart } from "@/context/CartContext";
-import { WATCHES } from "@/data/watches";
+import { apiClient } from "@/lib/axios";
 import { watchAudio } from "@/utils/audio";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -13,15 +12,12 @@ import {
   faMagnifyingGlass,
   faCertificate,
   faCircleCheck,
-  faClock,
-  faTruck,
+  faCircleExclamation,
   faWrench,
   faAward,
   faQrcode,
-  faCrown,
-  faLocationDot,
-  faArrowRight,
-  faCalendarCheck,
+  faSpinner,
+  faCircleInfo,
 } from "@fortawesome/free-solid-svg-icons";
 
 interface WarrantyData {
@@ -33,10 +29,10 @@ interface WarrantyData {
   customerName: string;
   purchaseDate: string;
   expiryDate: string;
-  status: "active" | "expired";
+  status: "active" | "expired" | "void";
   boutique: string;
-  calibre: string;
-  waterResistance: string;
+  calibre?: string;
+  waterResistance?: string;
   serviceHistory: {
     date: string;
     action: string;
@@ -44,88 +40,15 @@ interface WarrantyData {
   }[];
 }
 
-const SAMPLE_WARRANTIES: Record<string, WarrantyData> = {
-  "RLX-CHRONO-99428-CH": {
-    cardCode: "MDM-WAR-2026-9942",
-    serialNumber: "RLX-CHRONO-99428-CH",
-    watchName: "Cosmograph Daytona 126500LN",
-    brand: "Rolex",
-    image: WATCHES[0].image,
-    customerName: "Quý Khách Alexander Vũ",
-    purchaseDate: "15/01/2026",
-    expiryDate: "15/01/2031",
-    status: "active",
-    boutique: "BRU_WATCH - Đồng Khởi Salon, TP.HCM",
-    calibre: "Calibre 4131 In-house Superlative Chronometer",
-    waterResistance: "100m / 330 feet (Triplock)",
-    serviceHistory: [
-      {
-        date: "15/01/2026",
-        action: "Kích hoạt bảo hành điện tử xuất xưởng từ Geneva & niêm phong chì",
-        watchmaker: "Trưởng phòng Kỹ thuật Jean-Paul Morel (Geneva)",
-      },
-      {
-        date: "10/06/2026",
-        action: "Kiểm tra sai số Chronometer đạt chuẩn (+0.8s/ngày) & test buồng áp suất 10 bar",
-        watchmaker: "Master Watchmaker Thụy Sĩ tại Boutique Salon",
-      },
-    ],
-  },
-  "AP-RO-2026-78119-GEN": {
-    cardCode: "MDM-WAR-2026-7811",
-    serialNumber: "AP-RO-2026-78119-GEN",
-    watchName: "Royal Oak Jumbo Extra-Thin 16202ST",
-    brand: "Audemars Piguet",
-    image: WATCHES[1].image,
-    customerName: "Quý Khách Alexander Vũ",
-    purchaseDate: "20/02/2026",
-    expiryDate: "20/02/2031",
-    status: "active",
-    boutique: "BRU_WATCH - Tràng Tiền Boutique, Hà Nội",
-    calibre: "Calibre 7121 In-house Self-winding (28,800 vph)",
-    waterResistance: "50m / 165 feet",
-    serviceHistory: [
-      {
-        date: "20/02/2026",
-        action: "Bàn giao xe bọc thép có vệ sĩ vũ trang hộ tống tại Masteri Thảo Điền",
-        watchmaker: "Đội ngũ Concierge & Giám Đốc Salon",
-      },
-    ],
-  },
-  "PP-NAUT-5711-GOLD": {
-    cardCode: "MDM-WAR-2026-5711",
-    serialNumber: "PP-NAUT-5711-GOLD",
-    watchName: "Nautilus 5711/1R Rose Gold",
-    brand: "Patek Philippe",
-    image: WATCHES[2].image,
-    customerName: "Nữ Công Tước Sophia Lê",
-    purchaseDate: "10/03/2025",
-    expiryDate: "10/03/2030",
-    status: "active",
-    boutique: "BRU_WATCH - Private Salon",
-    calibre: "Calibre 26-330 S C Patek Philippe Seal",
-    waterResistance: "120m / 400 feet",
-    serviceHistory: [
-      {
-        date: "10/03/2025",
-        action: "Xuất xưởng kèm Giấy chứng nhận xuất xứ Patek Philippe Archives Certificate",
-        watchmaker: "Patek Philippe Master Watchmaker",
-      },
-    ],
-  },
-};
-
 function WarrantyLookupContent() {
   const searchParams = useSearchParams();
   const initialSerial = searchParams.get("serial") || "";
 
   const [inputCode, setInputCode] = useState(initialSerial);
-  const [searchedData, setSearchedData] = useState<WarrantyData | null>(
-    initialSerial && SAMPLE_WARRANTIES[initialSerial]
-      ? SAMPLE_WARRANTIES[initialSerial]
-      : SAMPLE_WARRANTIES["RLX-CHRONO-99428-CH"]
-  );
-  const [notFoundMessage, setNotFoundMessage] = useState(false);
+  const [searchedData, setSearchedData] = useState<WarrantyData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [hasSearched, setHasSearched] = useState(false);
 
   useEffect(() => {
     if (initialSerial) {
@@ -134,52 +57,80 @@ function WarrantyLookupContent() {
     }
   }, [initialSerial]);
 
-  const handleSearch = (codeToSearch?: string) => {
+  const handleSearch = async (codeToSearch?: string) => {
     watchAudio.ratchet();
     const target = (codeToSearch || inputCode).trim().toUpperCase();
 
     if (!target) {
+      setErrorMessage("Vui lòng nhập số Serial cỗ máy hoặc mã thẻ bảo hành điện tử.");
       setSearchedData(null);
-      setNotFoundMessage(false);
+      setHasSearched(true);
       return;
     }
 
-    // Direct match by serial or card code
-    const found = Object.values(SAMPLE_WARRANTIES).find(
-      (w) =>
-        w.serialNumber.toUpperCase() === target ||
-        w.cardCode.toUpperCase() === target ||
-        target.includes(w.brand.toUpperCase()) ||
-        w.serialNumber.toUpperCase().includes(target)
-    );
+    setLoading(true);
+    setErrorMessage(null);
 
-    if (found) {
-      setSearchedData(found);
-      setNotFoundMessage(false);
-    } else {
-      // Dynamic fallback for any valid user-typed serial
-      setSearchedData({
-        cardCode: `MDM-WAR-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-        serialNumber: target,
-        watchName: "BRU_WATCH Timepiece Special Commission",
-        brand: "Swiss Manufacture",
-        image: WATCHES[0].image,
-        customerName: "Quý Khách Hội Viên VIP",
-        purchaseDate: "01/01/2026",
-        expiryDate: "01/01/2031",
-        status: "active",
-        boutique: "BRU_WATCH Flagship Salon",
-        calibre: "Manufacture Mechanical Calibre COSC Certified",
-        waterResistance: "100m / 10 bar",
-        serviceHistory: [
-          {
-            date: "01/01/2026",
-            action: "Kích hoạt bảo hành điện tử chính hãng toàn cầu 5 năm",
-            watchmaker: "Trưởng phòng Kỹ thuật Thụy Sĩ",
-          },
-        ],
-      });
-      setNotFoundMessage(false);
+    try {
+      const res = await apiClient.get(`/warranties/check/${encodeURIComponent(target)}`);
+      const data = res.data?.data;
+
+      if (data) {
+        const productInfo = data.serialNumber?.variant?.product || {};
+        const variantInfo = data.serialNumber?.variant || {};
+
+        const mapped: WarrantyData = {
+          cardCode: data.cardCode || target,
+          serialNumber:
+            data.serialNumber?.serial_number ||
+            data.serialNumber?.serialNumber ||
+            target,
+          watchName: productInfo.name || "Kiệt Tác Đồng Hồ Chính Hãng",
+          brand: productInfo.brand || "Swiss Manufacture",
+          image:
+            variantInfo.imageUrl ||
+            productInfo.imageUrl ||
+            "/images/watches/submariner.png",
+          customerName: data.user?.name || "Khách Hàng Danh Dự",
+          purchaseDate: data.startDate
+            ? new Date(data.startDate).toLocaleDateString("vi-VN")
+            : "Chính Hãng",
+          expiryDate: data.ngayHetBaoHanh
+            ? new Date(data.ngayHetBaoHanh).toLocaleDateString("vi-VN")
+            : "5 Năm Toàn Cầu",
+          status: data.status || "active",
+          boutique: "BRU_WATCH Haute Horlogerie Flagship",
+          calibre: "Cỗ Máy In-House Chuẩn Chính Hãng",
+          waterResistance: "Chuẩn Áp Suất Kháng Nước Toàn Diện",
+          serviceHistory: [
+            {
+              date: data.startDate
+                ? new Date(data.startDate).toLocaleDateString("vi-VN")
+                : "Ngày bàn giao",
+              action: "Kích hoạt thẻ bảo hành điện tử chính hãng toàn cầu",
+              watchmaker: "Phòng Kiểm Định & Xuất Xưởng BRU_WATCH",
+            },
+          ],
+        };
+
+        setSearchedData(mapped);
+        setHasSearched(true);
+      } else {
+        setSearchedData(null);
+        setErrorMessage(
+          `Không tìm thấy dữ liệu bảo hành cho mã/serial '${target}'. Quý khách vui lòng kiểm tra lại.`
+        );
+        setHasSearched(true);
+      }
+    } catch (err: any) {
+      setSearchedData(null);
+      const apiMsg =
+        err.response?.data?.message ||
+        `Không tìm thấy thông tin bảo hành cho mã/serial '${target}' trong hệ thống.`;
+      setErrorMessage(apiMsg);
+      setHasSearched(true);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -197,12 +148,12 @@ function WarrantyLookupContent() {
           Tra Cứu Thẻ Bảo Hành Toàn Cầu
         </h1>
         <p className="text-xs text-muted-foreground mt-2 font-light leading-relaxed">
-          Tra cứu dữ liệu xuất xưởng, nguồn gốc cỗ máy và lịch sử dịch vụ bảo dưỡng trực tiếp từ cơ sở dữ liệu bảo mật BRU_WATCH.
+          Tra cứu dữ liệu xuất xưởng, trạng thái bảo hành điện tử và nguồn gốc cỗ máy trực tiếp từ hệ thống bảo mật BRU_WATCH.
         </p>
       </div>
 
       {/* Search Input Box */}
-      <div className="max-w-2xl mx-auto mb-10">
+      <div className="max-w-2xl mx-auto mb-12">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -215,37 +166,84 @@ function WarrantyLookupContent() {
           </div>
           <input
             type="text"
-            placeholder="Nhập số Serial cỗ máy hoặc mã thẻ bảo hành (ví dụ: RLX-CHRONO-99428-CH)..."
+            placeholder="Nhập số Serial cỗ máy hoặc mã thẻ bảo hành (ví dụ: SN-2026-001)..."
             value={inputCode}
             onChange={(e) => setInputCode(e.target.value)}
             className="w-full py-4 pl-4 pr-32 bg-transparent text-foreground placeholder:text-muted-foreground text-xs sm:text-sm font-mono focus:outline-none uppercase"
           />
           <button
             type="submit"
-            className="absolute right-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b38f28] text-black font-semibold text-xs font-mono uppercase tracking-wider hover:opacity-90 transition-opacity cursor-pointer"
+            disabled={loading}
+            className="absolute right-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b38f28] text-black font-semibold text-xs font-mono uppercase tracking-wider hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50 flex items-center gap-2"
           >
-            Tra Cứu
+            {loading && <FontAwesomeIcon icon={faSpinner} className="w-3.5 h-3.5 animate-spin" />}
+            <span>{loading ? "Đang Tra Cứu..." : "Tra Cứu"}</span>
           </button>
         </form>
 
-        {/* Quick sample serial chips */}
-        <div className="flex items-center gap-2 mt-3 flex-wrap justify-center text-[11px] font-mono">
-          <span className="text-muted-foreground">Thử mẫu Serial:</span>
-          {Object.keys(SAMPLE_WARRANTIES).map((code) => (
-            <button
-              key={code}
-              type="button"
-              onClick={() => {
-                setInputCode(code);
-                handleSearch(code);
-              }}
-              className="px-2.5 py-1 rounded-lg bg-muted/60 hover:bg-[#d4af37]/15 border border-border hover:border-[#d4af37]/40 text-[#d4af37] cursor-pointer transition-colors"
-            >
-              {code}
-            </button>
-          ))}
-        </div>
+        <p className="text-center text-[11px] font-mono text-muted-foreground mt-3">
+          * Số Serial được khắc ở nắp lưng cỗ máy hoặc in trên thẻ bảo hành điện tử khi nhận bàn giao.
+        </p>
       </div>
+
+      {/* Not Found / Error Message */}
+      {hasSearched && !searchedData && errorMessage && (
+        <div className="max-w-2xl mx-auto mb-10 p-6 rounded-2xl bg-amber-500/5 border border-amber-500/20 text-center animate-fadeIn">
+          <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-amber-500/10 text-amber-400 mb-3">
+            <FontAwesomeIcon icon={faCircleExclamation} className="w-5 h-5" />
+          </div>
+          <h3 className="font-serif text-base text-foreground font-medium mb-1">
+            Không Tìm Thấy Thông Tin Bảo Hành
+          </h3>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {errorMessage}
+          </p>
+          <p className="text-[11px] font-mono text-muted-foreground/80 mt-3">
+            Nếu Quý khách vừa nhận bàn giao đồng hồ, vui lòng liên hệ chuyên viên để được kích hoạt bảo hành điện tử trên hệ thống.
+          </p>
+        </div>
+      )}
+
+      {/* Initial Instruction State when no search done yet */}
+      {!hasSearched && !searchedData && (
+        <div className="max-w-3xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="p-6 rounded-2xl bg-card border border-border/40 text-center">
+            <div className="w-10 h-10 rounded-xl bg-[#d4af37]/10 text-[#d4af37] flex items-center justify-center mx-auto mb-3 text-sm">
+              <FontAwesomeIcon icon={faShieldHalved} className="w-4 h-4" />
+            </div>
+            <h4 className="font-serif text-sm font-medium text-foreground mb-1">
+              Bảo Hành Toàn Diện
+            </h4>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Toàn bộ cỗ máy xuất xưởng đều được bảo hành chính hãng chuẩn Thụy Sĩ theo thời hạn quy định.
+            </p>
+          </div>
+
+          <div className="p-6 rounded-2xl bg-card border border-border/40 text-center">
+            <div className="w-10 h-10 rounded-xl bg-[#d4af37]/10 text-[#d4af37] flex items-center justify-center mx-auto mb-3 text-sm">
+              <FontAwesomeIcon icon={faQrcode} className="w-4 h-4" />
+            </div>
+            <h4 className="font-serif text-sm font-medium text-foreground mb-1">
+              Định Danh Serial Độc Bản
+            </h4>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Mỗi cỗ máy sở hữu một số Serial duy nhất được lưu trữ vĩnh viễn trên cơ sở dữ liệu.
+            </p>
+          </div>
+
+          <div className="p-6 rounded-2xl bg-card border border-border/40 text-center">
+            <div className="w-10 h-10 rounded-xl bg-[#d4af37]/10 text-[#d4af37] flex items-center justify-center mx-auto mb-3 text-sm">
+              <FontAwesomeIcon icon={faCertificate} className="w-4 h-4" />
+            </div>
+            <h4 className="font-serif text-sm font-medium text-foreground mb-1">
+              Tra Cứu Nhanh Chóng
+            </h4>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Nhập mã thẻ hoặc số Serial vào ô tìm kiếm phía trên để kiểm tra tình trạng hiệu lực tức thì.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Warranty Card Presentation */}
       {searchedData && (
@@ -271,10 +269,17 @@ function WarrantyLookupContent() {
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-3.5 py-1.5 rounded-full border border-emerald-500/40 uppercase tracking-wider font-semibold flex items-center gap-1.5">
-                  <FontAwesomeIcon icon={faCircleCheck} className="w-3.5 h-3.5" />
-                  <span>Bảo Hành Hiệu Lực</span>
-                </span>
+                {searchedData.status === "active" ? (
+                  <span className="text-xs font-mono text-emerald-400 bg-emerald-500/10 px-3.5 py-1.5 rounded-full border border-emerald-500/40 uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                    <FontAwesomeIcon icon={faCircleCheck} className="w-3.5 h-3.5" />
+                    <span>Bảo Hành Hiệu Lực</span>
+                  </span>
+                ) : (
+                  <span className="text-xs font-mono text-red-400 bg-red-500/10 px-3.5 py-1.5 rounded-full border border-red-500/40 uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                    <FontAwesomeIcon icon={faCircleExclamation} className="w-3.5 h-3.5" />
+                    <span>Hết Hạn Bảo Hành</span>
+                  </span>
+                )}
               </div>
             </div>
 
@@ -338,9 +343,9 @@ function WarrantyLookupContent() {
                 </div>
 
                 <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/[0.06]">
-                  <span className="text-[10px] text-white/50 uppercase block">Thời Hạn Bảo Hành Quốc Tế</span>
+                  <span className="text-[10px] text-white/50 uppercase block">Thời Hạn Bảo Hành</span>
                   <strong className="text-emerald-400 mt-0.5 block">
-                    Đến {searchedData.expiryDate} (5 Năm Toàn Cầu)
+                    Đến {searchedData.expiryDate}
                   </strong>
                 </div>
 
@@ -382,7 +387,7 @@ function WarrantyLookupContent() {
             <div className="relative z-10 pt-6 mt-6 border-t border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono">
               <span className="text-white/50 flex items-center gap-2">
                 <FontAwesomeIcon icon={faQrcode} className="w-4 h-4 text-[#d4af37]" />
-                <span>Mã xác thực chữ ký điện tử mật mã Geneva: SHA-256 Valid</span>
+                <span>Mã xác thực chữ ký điện tử: SHA-256 Validated</span>
               </span>
 
               <Link
@@ -390,7 +395,7 @@ function WarrantyLookupContent() {
                 className="px-5 py-2.5 rounded-xl bg-white/[0.08] hover:bg-[#d4af37] hover:text-black text-white text-xs font-mono font-semibold transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
                 <FontAwesomeIcon icon={faWrench} className="w-3.5 h-3.5" />
-                <span>Đặt Lịch Bảo Dưỡng Định Kỳ</span>
+                <span>Đặt Lịch Dịch Vụ Sửa Chữa</span>
               </Link>
             </div>
           </div>

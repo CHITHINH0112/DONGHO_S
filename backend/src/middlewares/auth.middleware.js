@@ -1,9 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { User, Admin } from '../models/index.js';
 import { errorResponse } from '../utils/apiResponse.js';
-
 const JWT_SECRET = process.env.JWT_SECRET || 'super_luxury_watch_secret_key_2026';
-
 /**
  * Middleware xác thực JWT token (hỗ trợ cả User và Admin/Staff)
  */
@@ -15,17 +13,14 @@ export const verifyToken = async (req, res, next) => {
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.split(' ')[1];
     }
-
     if (!token) {
       return errorResponse(res, {
         statusCode: 401,
         message: 'Bạn chưa đăng nhập hoặc thiếu token xác thực',
       });
     }
-
     const decoded = jwt.verify(token, JWT_SECRET);
     let account = null;
-
     if (decoded.userType === 'admin') {
       try {
         account = await Admin.findByPk(decoded.id);
@@ -57,7 +52,6 @@ export const verifyToken = async (req, res, next) => {
         });
       }
     }
-
     req.user = account;
     req.userType = decoded.userType;
     next();

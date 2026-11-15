@@ -137,24 +137,6 @@ export default function Header() {
             >
               Bảo Hành
             </Link>
-
-            <Link
-              href="/boutiques"
-              className="hover:text-[#d4af37] transition-colors cursor-pointer"
-            >
-              Boutiques
-            </Link>
-
-            <button
-              onClick={() => {
-                watchAudio.click();
-                setIsVipModalOpen(true);
-              }}
-              className="hover:text-[#d4af37] transition-colors cursor-pointer text-foreground/80 flex items-center gap-1.5"
-            >
-              <FontAwesomeIcon icon={faCalendarCheck} className="w-3 h-3 text-[#d4af37]" />
-              <span>VIP Salon</span>
-            </button>
           </nav>
 
           {/* Actions & Utilities */}
@@ -190,30 +172,13 @@ export default function Header() {
               </button>
             )}
 
-            {/* Wishlist Button */}
-            <Link
-              href="/account/wishlist"
-              title="Danh sách yêu thích"
-              className="relative w-9 h-9 rounded-full bg-black/[0.04] dark:bg-white/[0.06] hover:bg-rose-500/10 border border-[#d4af37]/25 flex items-center justify-center transition-all cursor-pointer text-foreground"
-            >
-              <FontAwesomeIcon
-                icon={faHeart}
-                className={`w-3.5 h-3.5 ${
-                  wishlist.length > 0 ? "text-rose-500" : "text-muted-foreground"
-                }`}
-              />
-              {wishlist.length > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white font-mono text-[9px] font-bold flex items-center justify-center">
-                  {wishlist.length}
-                </span>
-              )}
-            </Link>
+            
 
             {/* Shopping Cart Button */}
-            <button
+            <Link
+              href="/cart"
               onClick={() => {
                 watchAudio.click();
-                setIsCartOpen(true);
               }}
               className="flex items-center gap-2 pl-3.5 pr-4 py-2 rounded-full bg-gradient-to-r from-[#d4af37] via-[#c69f2e] to-[#b38f28] text-black font-mono text-xs font-semibold uppercase tracking-wider shadow-md hover:scale-102 active:scale-95 transition-all cursor-pointer"
             >
@@ -222,7 +187,7 @@ export default function Header() {
               <span className="w-4 h-4 rounded-full bg-black text-[#d4af37] text-[10px] font-bold flex items-center justify-center">
                 {totalItems}
               </span>
-            </button>
+            </Link>
 
             {/* User Account Button & Dropdown */}
             <div className="relative" ref={dropdownRef}>
@@ -234,7 +199,7 @@ export default function Header() {
                       setUserDropdownOpen(!userDropdownOpen);
                     }}
                     className="flex items-center gap-1.5 pl-2 pr-2.5 py-1.5 rounded-full bg-white/[0.05] hover:bg-[#d4af37]/15 border border-[#d4af37]/35 text-foreground transition-all cursor-pointer"
-                    title="Tài khoản VIP"
+                    title="Tài khoản"
                   >
                     <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#d4af37] to-[#8c6a21] text-black flex items-center justify-center font-bold text-[10px] font-serif shadow">
                       {user.name.charAt(0)}
@@ -278,8 +243,8 @@ export default function Header() {
                         onClick={() => setUserDropdownOpen(false)}
                         className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-mono text-white/80 hover:text-white hover:bg-white/[0.06] transition-colors"
                       >
-                        <FontAwesomeIcon icon={faCrown} className="w-3.5 h-3.5 text-[#d4af37]" />
-                        <span>Hồ Sơ & Thẻ VIP</span>
+                        <FontAwesomeIcon icon={faUser} className="w-3.5 h-3.5 text-[#d4af37]" />
+                        <span>Hồ Sơ</span>
                       </Link>
 
                       <Link
@@ -300,14 +265,7 @@ export default function Header() {
                         <span>Sổ Địa Chỉ Bảo Mật</span>
                       </Link>
 
-                      <Link
-                        href="/account/wishlist"
-                        onClick={() => setUserDropdownOpen(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-mono text-white/80 hover:text-white hover:bg-white/[0.06] transition-colors"
-                      >
-                        <FontAwesomeIcon icon={faHeart} className="w-3.5 h-3.5 text-rose-400" />
-                        <span>Kiệt Tác Ước Nguyện</span>
-                      </Link>
+                      
 
                       <div className="pt-1 border-t border-white/[0.06]">
                         <button
@@ -328,7 +286,7 @@ export default function Header() {
                 <button
                   onClick={() => openAuthModal("login")}
                   className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-black/[0.04] dark:bg-white/[0.06] hover:bg-[#d4af37]/20 border border-[#d4af37]/25 text-xs font-mono transition-all cursor-pointer text-foreground"
-                  title="Đăng nhập VIP"
+                  title="Đăng nhập"
                 >
                   <FontAwesomeIcon icon={faUser} className="w-3.5 h-3.5 text-[#d4af37]" />
                   <span className="hidden xl:inline text-[11px] font-medium tracking-wider uppercase">
@@ -380,7 +338,7 @@ export default function Header() {
                 className="p-3.5 rounded-2xl bg-white/[0.04] border border-[#d4af37]/30 flex items-center justify-center gap-2 text-[#d4af37] font-mono text-xs uppercase font-semibold"
               >
                 <FontAwesomeIcon icon={faUser} className="w-3.5 h-3.5" />
-                <span>Đăng Nhập Khách VIP Salon</span>
+                <span>Đăng Nhập</span>
               </button>
             )}
 
@@ -408,14 +366,6 @@ export default function Header() {
               Tra Cứu Bảo Hành Toàn Cầu
             </Link>
 
-            <Link
-              href="/boutiques"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-left font-serif text-xl font-normal hover:text-[#d4af37]"
-            >
-              Hệ Thống Showroom Boutique
-            </Link>
-
             <button
               onClick={() => handleNavClick("luxury-brands")}
               className="text-left font-serif text-xl font-normal hover:text-[#d4af37]"
@@ -435,16 +385,6 @@ export default function Header() {
                 <span>{soundEnabled ? "Bật" : "Tắt"}</span>
               </button>
             </div>
-
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                setIsVipModalOpen(true);
-              }}
-              className="mt-2 py-3.5 rounded-full bg-gradient-to-r from-[#d4af37] to-[#b38f28] text-black text-xs font-bold font-mono uppercase tracking-widest text-center shadow-xl"
-            >
-              Đặt Lịch Hẹn Tại Boutique VIP
-            </button>
           </div>
         </div>
       )}

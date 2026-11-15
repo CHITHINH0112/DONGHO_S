@@ -20,7 +20,7 @@ router.post(
   '/',
   verifyToken,
   authorizeRoles('admin', 'staff'),
-  authorizePositions('manager'),
+  authorizePositions('manager', 'technician'),
   requireFields('name', 'serviceType', 'basePrice'),
   createService
 );
@@ -29,7 +29,7 @@ router.put(
   '/:id',
   verifyToken,
   authorizeRoles('admin', 'staff'),
-  authorizePositions('manager'),
+  authorizePositions('manager', 'technician'),
   updateService
 );
 

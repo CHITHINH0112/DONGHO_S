@@ -85,6 +85,12 @@ ProductVariantImage.belongsTo(ProductVariant, { foreignKey: 'variant_id', as: 'v
 // --- Product Variants & Serial Numbers ---
 ProductVariant.hasMany(SerialNumber, { foreignKey: 'variant_id', as: 'serialNumbers' });
 SerialNumber.belongsTo(ProductVariant, { foreignKey: 'variant_id', as: 'variant' });
+// --- Serial Numbers & Admins (Import & Warehouse Confirmation) ---
+SerialNumber.belongsTo(Admin, { as: 'importedBy', foreignKey: 'imported_by_admin_id' });
+SerialNumber.belongsTo(Admin, { as: 'warehouseStaff', foreignKey: 'warehouse_confirmed_by' });
+Admin.hasMany(SerialNumber, { as: 'importedSerials', foreignKey: 'imported_by_admin_id' });
+Admin.hasMany(SerialNumber, { as: 'confirmedSerials', foreignKey: 'warehouse_confirmed_by' });
+
 
 // --- User & Addresses ---
 User.hasMany(UserAddress, { foreignKey: 'user_id', as: 'addresses', onDelete: 'CASCADE' });
@@ -135,6 +141,8 @@ WarrantyClaim.belongsTo(SerialNumber, { foreignKey: 'serial_number_id', as: 'ser
 WarrantyClaim.belongsTo(Warranty, { foreignKey: 'warranty_id', as: 'warranty', onDelete: 'SET NULL' });
 WarrantyClaim.belongsTo(User, { foreignKey: 'customer_id', as: 'customer', onDelete: 'SET NULL' });
 WarrantyClaim.belongsTo(Admin, { foreignKey: 'staff_id', as: 'staff', onDelete: 'SET NULL' });
+WarrantyClaim.belongsTo(WatchService, { foreignKey: 'service_id', as: 'service', onDelete: 'SET NULL' });
+WatchService.hasMany(WarrantyClaim, { foreignKey: 'service_id', as: 'claims' });
 
 // Khả năng tương thích ngược
 export const Watch = Product;

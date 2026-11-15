@@ -21,7 +21,7 @@ import {
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const { login, isAuthenticated, isLoading: authLoading } = useAdminAuth();
+  const { login, isAuthenticated, isLoading: authLoading, admin } = useAdminAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -30,12 +30,26 @@ export default function AdminLoginPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // If already logged in, redirect to dashboard
+  const getDestination = (roleOrPosition?: string) => {
+    if (roleOrPosition === 'warehouse') return '/inventory';
+    try {
+      const stored = localStorage.getItem('admin_user');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.position === 'warehouse') return '/inventory';
+      }
+    } catch {
+      // ignore
+    }
+    return '/products';
+  };
+
+  // If already logged in, redirect to primary workspace
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      router.push('/');
+      router.push(getDestination(admin?.position));
     }
-  }, [isAuthenticated, authLoading, router]);
+  }, [isAuthenticated, authLoading, admin, router]);
 
   // Check if session expired
   useEffect(() => {
@@ -58,7 +72,7 @@ export default function AdminLoginPage() {
       if (result.success) {
         setSuccessMessage('Xác thực danh tính thành công! Đang chuyển hướng vào hệ thống...');
         setTimeout(() => {
-          router.push('/');
+          router.push(getDestination());
         }, 800);
       } else {
         setErrorMessage(result.message || 'Đăng nhập không thành công.');
@@ -92,13 +106,13 @@ export default function AdminLoginPage() {
 
           <div>
             <h1 className="text-xl font-semibold tracking-[0.2em] text-white uppercase font-sans">
-              CHRONO<span className="text-[#d4af37]">LUXE</span>
+              BRU_WATCH<span className="text-[#d4af37]"></span>
             </h1>
             <div className="text-[11px] tracking-[0.3em] text-[#d4af37]/80 uppercase mt-0.5">
-              Portal Quản Trị Hệ Thống
+              Quản Trị Hệ Thống
             </div>
             <p className="text-xs text-stone-400 mt-2 font-light">
-              Dành riêng cho Ban Giám Đốc, Thu Ngân & Kỹ Thuật Viên
+              KHU VỰC NỘI BỘ
             </p>
           </div>
         </div>
@@ -173,7 +187,7 @@ export default function AdminLoginPage() {
             {isSubmitting ? (
               <>
                 <FontAwesomeIcon icon={faSpinner} className="animate-spin text-sm" />
-                <span>Đang Xác Thực JWT...</span>
+                <span>Đang Xác Thực </span>
               </>
             ) : (
               <>
@@ -200,7 +214,7 @@ export default function AdminLoginPage() {
                 <FontAwesomeIcon icon={faCrown} className="text-[9px]" />
                 Admin (Manager)
               </div>
-              <div className="text-[10px] text-stone-400 truncate">admin@watchshop.local</div>
+
             </button>
 
             <button
@@ -212,7 +226,7 @@ export default function AdminLoginPage() {
                 <FontAwesomeIcon icon={faUserTie} className="text-[9px]" />
                 Thu Ngân (Sales)
               </div>
-              <div className="text-[10px] text-stone-400 truncate">staff6@watchshop.local</div>
+
             </button>
 
             <button
@@ -224,7 +238,7 @@ export default function AdminLoginPage() {
                 <FontAwesomeIcon icon={faBoxesStacked} className="text-[9px]" />
                 Thủ Kho (Warehouse)
               </div>
-              <div className="text-[10px] text-stone-400 truncate">staff8@watchshop.local</div>
+
             </button>
 
             <button
@@ -236,34 +250,13 @@ export default function AdminLoginPage() {
                 <FontAwesomeIcon icon={faShieldHalved} className="text-[9px]" />
                 Kỹ Thuật Viên
               </div>
-              <div className="text-[10px] text-stone-400 truncate">tech@watchshop.local</div>
+
             </button>
 
-            <button
-              type="button"
-              onClick={() => handleQuickFill('user2@watchshop.local', '123456')}
-              className="p-2 rounded bg-white/[0.04] hover:bg-red-500/10 border border-red-500/25 text-left text-stone-200 transition-colors col-span-2"
-              title="Thử đăng nhập bằng tài khoản Khách Hàng để kiểm tra chặn quyền"
-            >
-              <div className="font-semibold text-red-400 flex items-center justify-between">
-                <span className="flex items-center gap-1">
-                  <FontAwesomeIcon icon={faCircleExclamation} className="text-[9px]" />
-                  Thử Tài Khoản Khách Hàng (Customer)
-                </span>
-                <span className="text-[9px] font-mono uppercase bg-red-500/20 px-1.5 py-0.2 rounded border border-red-500/30">
-                  Chặn Cổng Admin
-                </span>
-              </div>
-              <div className="text-[10px] text-stone-400 truncate mt-0.5">user2@watchshop.local (Kiểm tra chặn quyền truy cập)</div>
-            </button>
           </div>
         </div>
 
-        {/* Security Footer Notice */}
-        <div className="mt-6 pt-4 border-t border-white/[0.04] flex items-center justify-center gap-2 text-[10px] text-stone-500">
-          <FontAwesomeIcon icon={faShieldHalved} className="text-[#d4af37]/70" />
-          <span>Hệ thống bảo mật JWT 256-bit • Chặn truy cập người dùng vãng lai</span>
-        </div>
+
       </div>
     </div>
   );

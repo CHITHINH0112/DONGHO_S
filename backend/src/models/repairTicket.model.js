@@ -43,6 +43,12 @@ export const RepairTicket = sequelize.define('RepairTicket', {
     defaultValue: 0.00,
     comment: 'Chi phí sửa chữa dịch vụ khách phải trả',
   },
+  paymentStatus: {
+    type: DataTypes.ENUM('unpaid', 'paid'),
+    allowNull: false,
+    defaultValue: 'unpaid',
+    field: 'payment_status',
+  },
   status: {
     type: DataTypes.ENUM('received', 'inspecting', 'in_progress', 'completed', 'delivered', 'cancelled'),
     allowNull: false,
