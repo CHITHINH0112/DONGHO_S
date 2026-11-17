@@ -20,6 +20,7 @@ import {
   faWrench,
   faTag,
   faLayerGroup,
+  faTruckFast,
 } from '@fortawesome/free-solid-svg-icons';
 import { useAdminAuth } from '@/context/AdminAuthContext';
 import { canAccessRoute, getPositionBadgeInfo } from '@/utils/permissions';
@@ -65,6 +66,20 @@ export default function AdminSidebar({ isOpen = false, onClose }: AdminSidebarPr
       href: '/features',
       icon: faSliders,
       badge: null,
+    },
+    {
+      name: 'Quản Lý Đơn Hàng',
+      href: '/orders',
+      icon: faReceipt,
+      badge: 'Sổ cái VIP',
+      badgeColor: 'emerald',
+    },
+    {
+      name: 'Vận Đơn & GHN Express',
+      href: '/shipments',
+      icon: faTruckFast,
+      badge: 'GHN API',
+      badgeColor: 'gold',
     },
     {
       name: 'Quản Lý Tài Khoản',

@@ -23,6 +23,7 @@ frontend/.env.local
 fe-admin/.env.local
 !.env.example
 !*.env.example
+!**/.env.example
 
 # Debug and Logs
 npm-debug.log*

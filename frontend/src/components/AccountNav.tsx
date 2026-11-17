@@ -16,6 +16,7 @@ import {
   faShieldHalved,
   faGem,
   faBuildingColumns,
+  faWrench,
 } from "@fortawesome/free-solid-svg-icons";
 
 export default function AccountNav() {
@@ -54,6 +55,11 @@ export default function AccountNav() {
       label: "Lịch Sử Đơn Mua",
       href: "/account/orders",
       icon: faBoxArchive,
+    },
+    {
+      label: "Lịch Hẹn Dịch Vụ",
+      href: "/account/services",
+      icon: faWrench,
     },
     {
       label: "Sổ Địa Chỉ Bảo Mật",

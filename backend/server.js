@@ -11,12 +11,20 @@ const startServer = async () => {
   await connectDB();
 
   // Khởi động lắng nghe cổng
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`===============================================`);
     console.log(`🚀 Luxury Watch Server is running on port ${PORT}`);
     console.log(`👉 Health check: http://localhost:${PORT}/api/v1/health`);
     console.log(`👉 Watches API:  http://localhost:${PORT}/api/v1/watches`);
     console.log(`===============================================`);
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`❌ Cổng ${PORT} đang bị chiếm dụng. Vui lòng thử lại sau giây lát.`);
+    } else {
+      console.error('❌ Lỗi khởi động server:', err);
+    }
   });
 };
 

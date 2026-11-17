@@ -1,7 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
-import { WatchItem, WatchVariant, WATCHES } from "@/data/watches";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { WatchItem, WatchVariant } from "@/data/watches";
 import { watchAudio } from "@/utils/audio";
 import { useAuth } from "@/context/AuthContext";
 import { apiClient } from "@/lib/axios";
@@ -15,6 +15,7 @@ export interface CartEntry {
   watch: WatchItem;
   quantity: number;
   selectedVariant?: WatchVariant;
+  availableVariants?: WatchVariant[];
 }
 
 interface CartContextType {
@@ -24,11 +25,12 @@ interface CartContextType {
   currency: Currency;
   setCurrency: (c: Currency) => void;
   formatPrice: (priceUSD: number, priceVND: number) => string;
-  addToCart: (watch: WatchItem, qty?: number, variant?: WatchVariant | null) => Promise<boolean> | void;
-  removeFromCart: (cartEntryId: string) => Promise<void> | void;
-  updateQuantity: (cartEntryId: string, delta: number) => Promise<void> | void;
-  setCartItemQuantity: (cartEntryId: string, quantity: number) => Promise<void> | void;
-  clearCart: () => Promise<void> | void;
+  addToCart: (watch: WatchItem, qty?: number, variant?: WatchVariant | null) => Promise<boolean>;
+  removeFromCart: (cartEntryId: string) => Promise<void>;
+  updateQuantity: (cartEntryId: string, delta: number) => Promise<void>;
+  setCartItemQuantity: (cartEntryId: string, quantity: number) => Promise<void>;
+  switchVariant: (cartEntryId: string, newVariantId: number | string) => Promise<boolean>;
+  clearCart: () => Promise<void>;
   fetchBackendCart: () => Promise<void>;
   toggleWishlist: (watchId: string) => void;
   isInWishlist: (watchId: string) => boolean;
@@ -56,7 +58,7 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, openAuthModal } = useAuth();
   const [cart, setCart] = useState<CartEntry[]>([]);
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [compareList, setCompareList] = useState<WatchItem[]>([]);
@@ -68,9 +70,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [promoCode, setPromoCode] = useState("");
   const [discountRate, setDiscountRate] = useState(0);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  // Tham chiếu để tránh loop đồng bộ khi user đăng nhập
-  const hasSyncedRef = useRef(false);
 
   // Helper chuyển đổi từ DB CartItem sang Frontend CartEntry
   const mapBackendItemToCartEntry = useCallback((item: any): CartEntry => {
@@ -96,6 +95,28 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       stockCount: availableStock > 0 ? availableStock : 1,
     };
 
+    // Danh sách tất cả các biến thể khả dụng của sản phẩm
+    const availableVariants: WatchVariant[] = Array.isArray(prod?.variants) && prod.variants.length > 0
+      ? prod.variants.map((v: any) => {
+          const vImg = v.images?.[0]?.imageUrl || prod.imageUrl || "/images/submariner-emerald.jpg";
+          const vPrice = Number(v.price || prod.basePrice || 0);
+          const vStock = v.serialNumbers && v.serialNumbers.length > 0
+            ? v.serialNumbers.filter((s: any) => s.status === "available").length
+            : 10;
+          return {
+            id: v.id,
+            sku: v.sku || `BRU-${v.id}`,
+            priceVND: vPrice,
+            priceUSD: Math.round(vPrice / 25000),
+            mauMatSo: v.mauMatSo || "Mặt số",
+            mauDayDeo: v.mauDayDeo || null,
+            mauNieng: v.mauNieng || null,
+            images: [normalizeImageUrl(vImg)],
+            stockCount: vStock > 0 ? vStock : 1,
+          };
+        })
+      : [variantObj];
+
     const watchObj: WatchItem = {
       id: String(prod?.id || `watch-${item.variantId}`),
       name: prod?.name || "Đồng Hồ Cơ Khí Chế Tác",
@@ -108,7 +129,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       tag: "Chính Hãng Thụy Sỹ",
       rating: 5,
       reviewsCount: 1,
-      variants: [variantObj],
+      variants: availableVariants,
       specs: {
         diameter: "40mm",
         thickness: "12mm",
@@ -134,10 +155,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       watch: watchObj,
       quantity: Number(item.quantity || 1),
       selectedVariant: variantObj,
+      availableVariants,
     };
   }, []);
 
-  // Tải giỏ hàng từ CSDL Backend
+  // Tải giỏ hàng từ CSDL Backend khi đã đăng nhập
   const fetchBackendCart = useCallback(async () => {
     try {
       const res = await apiClient.get("/cart");
@@ -145,86 +167,34 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         const rawItems = res.data.data.items || [];
         const mappedCart: CartEntry[] = rawItems.map(mapBackendItemToCartEntry);
         setCart(mappedCart);
-        try {
-          localStorage.setItem("chrono-cart", JSON.stringify(mappedCart));
-        } catch {}
       }
     } catch (err) {
       console.warn("Chưa thể lấy giỏ hàng từ máy chủ:", err);
     }
   }, [mapBackendItemToCartEntry]);
 
-  // Load from localStorage on client first
+  // Load wishlist và currency từ client localStorage (chỉ lưu sở thích cá nhân, KHÔNG lưu giỏ hàng)
   useEffect(() => {
     try {
-      const savedCart = localStorage.getItem("chrono-cart");
-      if (savedCart) setCart(JSON.parse(savedCart));
+      // Xóa vĩnh viễn key giỏ hàng cũ trong localStorage để dứt điểm lỗi lưu rác
+      localStorage.removeItem("chrono-cart");
 
       const savedWishlist = localStorage.getItem("chrono-wishlist");
       if (savedWishlist) setWishlist(JSON.parse(savedWishlist));
 
       const savedCurr = localStorage.getItem("chrono-curr") as Currency | null;
       if (savedCurr) setCurrencyState(savedCurr);
-    } catch {
-      // Fallback
-    }
+    } catch {}
   }, []);
 
-  // Tự động đồng bộ giỏ hàng khi người dùng đăng nhập
+  // Tự động đồng bộ giỏ hàng theo trạng thái đăng nhập
   useEffect(() => {
     if (isAuthenticated && user) {
-      if (!hasSyncedRef.current) {
-        hasSyncedRef.current = true;
-        const syncUserCart = async () => {
-          // Lấy hàng từ local hiện có
-          const localCartStr = localStorage.getItem("chrono-cart");
-          let localItems: CartEntry[] = [];
-          try {
-            if (localCartStr) localItems = JSON.parse(localCartStr);
-          } catch {}
-
-          // Tải giỏ hàng từ backend
-          try {
-            const res = await apiClient.get("/cart");
-            const backendItems = res.data?.data?.items || [];
-
-            // Nếu trong local có item chưa được đưa lên backend, gửi lên
-            if (localItems.length > 0) {
-              for (const item of localItems) {
-                const targetVarId = item.selectedVariant?.id || item.watch.variants?.[0]?.id;
-                if (targetVarId) {
-                  const alreadyInBackend = backendItems.some(
-                    (bi: any) => bi.variantId === targetVarId || bi.variant?.id === targetVarId
-                  );
-                  if (!alreadyInBackend) {
-                    await apiClient.post("/cart/items", {
-                      variantId: targetVarId,
-                      quantity: item.quantity,
-                    }).catch(() => {});
-                  }
-                }
-              }
-            }
-            // Fetch lại giỏ hàng đầy đủ từ backend
-            await fetchBackendCart();
-          } catch {
-            await fetchBackendCart();
-          }
-        };
-
-        syncUserCart();
-      }
+      fetchBackendCart();
     } else {
-      hasSyncedRef.current = false;
+      setCart([]); // Xóa sạch giỏ hàng khỏi RAM khi chưa đăng nhập hoặc vừa đăng xuất
     }
   }, [isAuthenticated, user, fetchBackendCart]);
-
-  const saveCart = (newCart: CartEntry[]) => {
-    setCart(newCart);
-    try {
-      localStorage.setItem("chrono-cart", JSON.stringify(newCart));
-    } catch {}
-  };
 
   const saveWishlist = (newWish: string[]) => {
     setWishlist(newWish);
@@ -271,68 +241,62 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }).format(priceUSD * 0.92);
   };
 
-  const addToCart = async (watch: WatchItem, qty = 1, variant?: WatchVariant | null) => {
+  const addToCart = async (watch: WatchItem, qty = 1, variant?: WatchVariant | null): Promise<boolean> => {
     watchAudio.click();
-    const effectiveVariant = variant || watch.variants?.[0];
-    const entryId = effectiveVariant ? `${watch.id}-var-${effectiveVariant.id}` : watch.id;
-    const existingIndex = cart.findIndex((e) => (e.id || e.watch.id) === entryId);
 
-    // Kiểm tra tồn kho khả dụng
-    const availableStock = effectiveVariant?.stockCount ?? 99;
-    const currentQtyInCart = existingIndex > -1 ? cart[existingIndex].quantity : 0;
-    if (availableStock > 0 && currentQtyInCart + qty > availableStock) {
-      showToast(`Kho chỉ còn ${availableStock} sản phẩm khả dụng cho phiên bản này.`);
+    // RÀNG BUỘC: BẮT BUỘC ĐĂNG NHẬP MỚI ĐƯỢC THÊM VÀO GIỎ HÀNG
+    if (!isAuthenticated) {
+      openAuthModal("login");
+      showToast("Quý khách vui lòng đăng nhập để lưu trữ cỗ máy vào giỏ hàng bảo mật.");
       return false;
     }
 
-    let newCart: CartEntry[];
-    if (existingIndex > -1) {
-      newCart = [...cart];
-      newCart[existingIndex].quantity += qty;
-    } else {
-      newCart = [
-        ...cart,
-        { id: entryId, watch, quantity: qty, selectedVariant: effectiveVariant || undefined },
-      ];
+    const effectiveVariant = variant || watch.variants?.[0];
+    if (!effectiveVariant?.id) {
+      showToast("Không tìm thấy thông tin phiên bản đồng hồ hợp lệ.");
+      return false;
     }
-    saveCart(newCart);
 
-    const variantDesc = effectiveVariant?.mauMatSo ? ` (${effectiveVariant.mauMatSo})` : "";
-    showToast(`Đã thêm "${watch.name}${variantDesc}" vào giỏ hàng bảo mật.`);
+    // Gửi trực tiếp lên Backend API
+    try {
+      const res = await apiClient.post("/cart/items", {
+        variantId: effectiveVariant.id,
+        quantity: qty,
+      });
 
-    // Nếu đã đăng nhập, gửi đồng bộ lên Backend API
-    if (isAuthenticated && effectiveVariant?.id) {
-      try {
-        const res = await apiClient.post("/cart/items", {
-          variantId: effectiveVariant.id,
-          quantity: qty,
-        });
-        if (res.data?.success && res.data?.data) {
-          const rawItems = res.data.data.items || [];
-          const mappedCart: CartEntry[] = rawItems.map(mapBackendItemToCartEntry);
-          saveCart(mappedCart);
-        }
-      } catch (err: any) {
-        const msg = err.response?.data?.message;
-        if (msg) showToast(msg);
+      if (res.data?.success && res.data?.data) {
+        const rawItems = res.data.data.items || [];
+        const mappedCart: CartEntry[] = rawItems.map(mapBackendItemToCartEntry);
+        setCart(mappedCart);
+
+        const variantDesc = effectiveVariant?.mauMatSo ? ` (${effectiveVariant.mauMatSo})` : "";
+        showToast(`Đã thêm "${watch.name}${variantDesc}" vào giỏ hàng bảo mật.`);
+        return true;
       }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || "Không thể thêm sản phẩm vào giỏ hàng lúc này.";
+      showToast(msg);
+      return false;
     }
 
-    return true;
+    return false;
   };
 
   const removeFromCart = async (cartEntryId: string) => {
     watchAudio.click();
     const targetItem = cart.find((e) => (e.id || e.watch.id) === cartEntryId);
-    const newCart = cart.filter((e) => (e.id || e.watch.id) !== cartEntryId);
-    saveCart(newCart);
+    if (!targetItem) return;
 
-    // Nếu đã đăng nhập, xóa trên backend API
-    if (isAuthenticated && targetItem?.backendCartItemId) {
+    // Cập nhật optimistic local state trước
+    setCart((prev) => prev.filter((e) => (e.id || e.watch.id) !== cartEntryId));
+
+    if (isAuthenticated && targetItem.backendCartItemId) {
       try {
         await apiClient.delete(`/cart/items/${targetItem.backendCartItemId}`);
-      } catch (err) {
+        showToast("Đã gỡ kiệt tác khỏi giỏ hàng.");
+      } catch (err: any) {
         console.warn("Lỗi khi xóa sản phẩm trên backend cart:", err);
+        await fetchBackendCart();
       }
     }
   };
@@ -340,44 +304,39 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const updateQuantity = async (cartEntryId: string, delta: number) => {
     watchAudio.tick();
     const targetItem = cart.find((e) => (e.id || e.watch.id) === cartEntryId);
-    if (!targetItem) return;
+    if (!targetItem || !targetItem.backendCartItemId) return;
 
     const newQty = targetItem.quantity + delta;
+    if (newQty <= 0) {
+      await removeFromCart(cartEntryId);
+      return;
+    }
 
-    // Kiểm tra tồn kho
     const availableStock = targetItem.selectedVariant?.stockCount ?? 99;
     if (delta > 0 && availableStock > 0 && newQty > availableStock) {
       showToast(`Kho chỉ còn ${availableStock} sản phẩm khả dụng cho phiên bản này.`);
       return;
     }
 
-    if (newQty <= 0) {
-      removeFromCart(cartEntryId);
-      return;
-    }
-
-    const newCart = cart.map((e) =>
-      (e.id || e.watch.id) === cartEntryId ? { ...e, quantity: newQty } : e
-    );
-    saveCart(newCart);
-
-    // Nếu đã đăng nhập, cập nhật backend API
-    if (isAuthenticated && targetItem.backendCartItemId) {
-      try {
-        await apiClient.put(`/cart/items/${targetItem.backendCartItemId}`, {
-          quantity: newQty,
-        });
-      } catch (err: any) {
-        const msg = err.response?.data?.message;
-        if (msg) showToast(msg);
+    try {
+      const res = await apiClient.put(`/cart/items/${targetItem.backendCartItemId}`, {
+        quantity: newQty,
+      });
+      if (res.data?.success && res.data?.data) {
+        const rawItems = res.data.data.items || [];
+        setCart(rawItems.map(mapBackendItemToCartEntry));
       }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || "Không thể cập nhật số lượng.";
+      showToast(msg);
+      await fetchBackendCart();
     }
   };
 
   const setCartItemQuantity = async (cartEntryId: string, quantity: number) => {
     watchAudio.tick();
     const targetItem = cart.find((e) => (e.id || e.watch.id) === cartEntryId);
-    if (!targetItem) return;
+    if (!targetItem || !targetItem.backendCartItemId) return;
 
     const validQty = Math.max(1, Math.floor(quantity));
     const availableStock = targetItem.selectedVariant?.stockCount ?? 99;
@@ -386,25 +345,58 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const newCart = cart.map((e) =>
-      (e.id || e.watch.id) === cartEntryId ? { ...e, quantity: validQty } : e
-    );
-    saveCart(newCart);
-
-    if (isAuthenticated && targetItem.backendCartItemId) {
-      try {
-        await apiClient.put(`/cart/items/${targetItem.backendCartItemId}`, {
-          quantity: validQty,
-        });
-      } catch (err: any) {
-        const msg = err.response?.data?.message;
-        if (msg) showToast(msg);
+    try {
+      const res = await apiClient.put(`/cart/items/${targetItem.backendCartItemId}`, {
+        quantity: validQty,
+      });
+      if (res.data?.success && res.data?.data) {
+        const rawItems = res.data.data.items || [];
+        setCart(rawItems.map(mapBackendItemToCartEntry));
       }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || "Không thể cập nhật số lượng.";
+      showToast(msg);
+      await fetchBackendCart();
     }
   };
 
+  // Đổi biến thể trực tiếp trong giỏ hàng
+  const switchVariant = async (cartEntryId: string, newVariantId: number | string): Promise<boolean> => {
+    watchAudio.click();
+    if (!isAuthenticated) {
+      openAuthModal("login");
+      return false;
+    }
+
+    const targetItem = cart.find((e) => (e.id || e.watch.id) === cartEntryId);
+    if (!targetItem || !targetItem.backendCartItemId) {
+      showToast("Không tìm thấy mục tương ứng trong giỏ hàng.");
+      return false;
+    }
+
+    try {
+      const res = await apiClient.put(`/cart/items/${targetItem.backendCartItemId}`, {
+        variantId: Number(newVariantId),
+      });
+
+      if (res.data?.success && res.data?.data) {
+        const rawItems = res.data.data.items || [];
+        const mappedCart: CartEntry[] = rawItems.map(mapBackendItemToCartEntry);
+        setCart(mappedCart);
+        showToast("Đã đổi phiên bản đồng hồ thành công.");
+        return true;
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || "Không thể đổi phiên bản lúc này.";
+      showToast(msg);
+      return false;
+    }
+
+    return false;
+  };
+
   const clearCart = async () => {
-    saveCart([]);
+    watchAudio.ratchet();
     if (isAuthenticated) {
       try {
         await apiClient.delete("/cart");
@@ -412,6 +404,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         console.warn("Lỗi khi dọn giỏ hàng trên backend:", err);
       }
     }
+    setCart([]);
   };
 
   const toggleWishlist = (watchId: string) => {
@@ -496,6 +489,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         removeFromCart,
         updateQuantity,
         setCartItemQuantity,
+        switchVariant,
         clearCart,
         fetchBackendCart,
         toggleWishlist,

@@ -30,11 +30,11 @@ export const addToCart = asyncHandler(async (req, res) => {
 
 export const updateCartItem = asyncHandler(async (req, res) => {
   const { itemId } = req.params;
-  const { quantity } = req.body;
-  const result = await cartService.updateItemQuantity(req.user.id, itemId, quantity);
+  const { quantity, variantId } = req.body;
+  const result = await cartService.updateCartItem(req.user.id, itemId, { quantity, variantId });
 
   return successResponse(res, {
-    message: 'Cập nhật số lượng sản phẩm thành công',
+    message: 'Cập nhật sản phẩm trong giỏ hàng thành công',
     data: result.cart,
     meta: {
       totalQuantity: result.totalQuantity,

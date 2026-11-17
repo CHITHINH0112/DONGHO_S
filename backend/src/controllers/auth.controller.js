@@ -52,10 +52,34 @@ export const getMe = asyncHandler(async (req, res) => {
   });
 });
 
+export const updateProfile = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+  const { name, phone } = req.body;
+  const updatedUser = await authService.updateProfile(userId, { name, phone });
+
+  return successResponse(res, {
+    message: 'Cập nhật hồ sơ cá nhân thành công',
+    data: updatedUser,
+  });
+});
+
+export const changePassword = asyncHandler(async (req, res) => {
+  const userId = req.user.id;
+  const { oldPassword, newPassword, confirmPassword } = req.body;
+  const result = await authService.changePassword(userId, { oldPassword, newPassword, confirmPassword });
+
+  return successResponse(res, {
+    message: result.message,
+    data: null,
+  });
+});
+
 export default {
   register,
   login,
   googleLogin,
   refreshToken,
   getMe,
+  updateProfile,
+  changePassword,
 };

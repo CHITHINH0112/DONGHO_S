@@ -1,5 +1,7 @@
 import jwt from 'jsonwebtoken';
+import { Op } from 'sequelize';
 import { User, Admin } from '../models/index.js';
+import { isValidVietnamPhone, normalizeVietnamPhone } from '../utils/phoneValidator.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'super_luxury_watch_secret_key_2026';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h'; // Access token ngắn hạn (1 giờ)
@@ -351,10 +353,101 @@ export const googleLogin = async ({ email, name, googleId, avatar, credential, a
   }
 };
 
+/**
+ * Cập nhật thông tin hồ sơ người dùng
+ */
+export const updateProfile = async (userId, { name, phone }) => {
+  const user = await User.findByPk(userId);
+  if (!user) {
+    const error = new Error('Người dùng không tồn tại');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (name && name.trim()) {
+    user.name = name.trim();
+  }
+
+  if (phone !== undefined) {
+    if (phone && phone.trim()) {
+      if (!isValidVietnamPhone(phone)) {
+        const error = new Error('Số điện thoại không hợp lệ. Vui lòng nhập đúng số điện thoại thật của Việt Nam (10 chữ số).');
+        error.statusCode = 400;
+        throw error;
+      }
+      const normalizedPhone = normalizeVietnamPhone(phone);
+      // Kiểm tra trùng SĐT với user khác
+      const existingPhone = await User.findOne({
+        where: {
+          phone: normalizedPhone,
+          id: { [Op.ne]: userId },
+        },
+      });
+      if (existingPhone) {
+        const error = new Error('Số điện thoại này đã được tài khoản khác sử dụng');
+        error.statusCode = 400;
+        throw error;
+      }
+      user.phone = normalizedPhone;
+    } else {
+      user.phone = null;
+    }
+  }
+
+  await user.save();
+  return user;
+};
+
+/**
+ * Đổi mật khẩu tài khoản
+ */
+export const changePassword = async (userId, { oldPassword, newPassword, confirmPassword }) => {
+  const user = await User.findByPk(userId);
+  if (!user) {
+    const error = new Error('Người dùng không tồn tại');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  // Nếu user đã có mật khẩu (không phải tài khoản chỉ đăng nhập Google)
+  if (user.password) {
+    if (!oldPassword) {
+      const error = new Error('Vui lòng nhập mật khẩu hiện tại');
+      error.statusCode = 400;
+      throw error;
+    }
+    const isMatch = await user.comparePassword(oldPassword);
+    if (!isMatch) {
+      const error = new Error('Mật khẩu hiện tại không chính xác');
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+
+  if (!newPassword || newPassword.length < 6) {
+    const error = new Error('Mật khẩu mới phải có ít nhất 6 ký tự');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (confirmPassword && newPassword !== confirmPassword) {
+    const error = new Error('Xác nhận mật khẩu mới không trùng khớp');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  user.password = newPassword;
+  await user.save(); // hooks beforeUpdate will automatically bcrypt hash it!
+
+  return { message: 'Đổi mật khẩu thành công' };
+};
+
 export default {
   register,
   login,
   googleLogin,
   refreshToken: refreshTokenService,
   getProfile,
+  updateProfile,
+  changePassword,
 };

@@ -39,7 +39,7 @@ export const OrderReturn = sequelize.define('OrderReturn', {
     type: DataTypes.DECIMAL(5, 2),
     allowNull: false,
     defaultValue: 20.00,
-    field: '_Phan_Tram_Khau_Tru',
+    field: 'Phan_Tram_Khau_Tru',
     comment: 'Phần trăm khấu trừ máy cũ',
   },
   soTienKhauTruMayCu: {

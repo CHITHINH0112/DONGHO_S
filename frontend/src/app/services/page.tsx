@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { apiClient } from "@/lib/axios";
@@ -17,6 +18,9 @@ import {
   faCrown,
   faSpinner,
   faCircleInfo,
+  faLocationDot,
+  faCertificate,
+  faBarcode,
 } from "@fortawesome/free-solid-svg-icons";
 
 interface DbServiceItem {
@@ -66,19 +70,54 @@ const SERVICE_TYPE_LABELS: Record<string, { category: string; description: strin
   },
 };
 
-export default function ServicesPage() {
+function ServicesContent() {
+  const searchParams = useSearchParams();
+  const initialSerial = searchParams.get("serial") || "";
+
   const { showToast } = useCart();
-  const { user } = useAuth();
+  const { user, addresses, openAuthModal } = useAuth();
 
   const [services, setServices] = useState<DbServiceItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [bookingServiceId, setBookingServiceId] = useState<number | string>("");
   const [customerName, setCustomerName] = useState(user?.name || "");
   const [customerPhone, setCustomerPhone] = useState(user?.phone || "");
+  const [customerEmail, setCustomerEmail] = useState(user?.email || "");
   const [watchInfo, setWatchInfo] = useState("");
+  const [serialNumber, setSerialNumber] = useState(initialSerial);
   const [preferredDate, setPreferredDate] = useState("");
   const [locationType, setLocationType] = useState<"salon" | "home">("salon");
+  const [pickupAddress, setPickupAddress] = useState("");
+  const [selectedAddressId, setSelectedAddressId] = useState<string>("");
+  const [useCustomAddress, setUseCustomAddress] = useState<boolean>(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [bookedTicketId, setBookedTicketId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (initialSerial && !serialNumber) {
+      setSerialNumber(initialSerial);
+    }
+  }, [initialSerial, serialNumber]);
+
+  useEffect(() => {
+    if (user) {
+      if (!customerName) setCustomerName(user.name || "");
+      if (!customerPhone) setCustomerPhone(user.phone || "");
+      if (!customerEmail) setCustomerEmail(user.email || "");
+    }
+  }, [user, customerName, customerPhone, customerEmail]);
+
+  // Tự động gán địa chỉ mặc định từ Sổ địa chỉ nếu có
+  useEffect(() => {
+    if (addresses && addresses.length > 0 && !pickupAddress) {
+      const def = addresses.find((a) => a.isDefault) || addresses[0];
+      if (def) {
+        setSelectedAddressId(String(def.id));
+        setPickupAddress(def.address);
+      }
+    }
+  }, [addresses, pickupAddress]);
 
   useEffect(() => {
     const fetchServices = async () => {
@@ -104,11 +143,49 @@ export default function ServicesPage() {
     fetchServices();
   }, []);
 
-  const handleSubmitBooking = (e: React.FormEvent) => {
+  const handleSubmitBooking = async (e: React.FormEvent) => {
     e.preventDefault();
-    watchAudio.chime();
-    setIsSubmitted(true);
-    showToast("Đã ghi nhận lịch hẹn kiểm định cỗ máy.");
+    if (!user) {
+      showToast("Quý khách vui lòng đăng nhập để lưu lịch hẹn và nhận email xác nhận.");
+      openAuthModal("login");
+      return;
+    }
+    if (locationType === "home" && !pickupAddress.trim()) {
+      showToast("Vui lòng cung cấp địa chỉ tiếp nhận tận nơi để chuyên viên bảo an đến phục vụ.");
+      return;
+    }
+    try {
+      setSubmitting(true);
+      watchAudio.chime();
+      const trimmedSerial = serialNumber.trim();
+      const res = await apiClient.post("/services/repairs/tickets", {
+        serviceId: Number(bookingServiceId),
+        watchInfo,
+        serialNumber: trimmedSerial || undefined,
+        appointmentDate: preferredDate || null,
+        locationType,
+        pickupAddress: locationType === "home" ? pickupAddress.trim() : null,
+        customerName,
+        customerPhone,
+        customerEmail,
+        issueDescription: `Khách hẹn: ${customerName} (${customerPhone}). Cỗ máy: ${watchInfo}${
+          trimmedSerial ? ` [Serial: ${trimmedSerial}]` : ""
+        }. Tiếp nhận: ${
+          locationType === "home" ? `Tận nơi (${pickupAddress.trim()})` : "Tại Flagship Salon"
+        }.`,
+      });
+      if (res.data?.success) {
+        setIsSubmitted(true);
+        setBookedTicketId(res.data?.data?.id || null);
+        showToast("Đã ghi nhận lịch hẹn & gửi email xác nhận thành công!");
+      } else {
+        showToast(res.data?.message || "Không thể đặt lịch hẹn lúc này.");
+      }
+    } catch (err: any) {
+      showToast(err.response?.data?.message || "Lỗi khi gửi lịch hẹn dịch vụ.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const formatPriceVND = (price: string | number) => {
@@ -253,16 +330,39 @@ export default function ServicesPage() {
                 <h4 className="font-serif text-xl text-foreground">
                   Lịch Hẹn Đã Được Tiếp Nhận
                 </h4>
+                {bookedTicketId && (
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <span className="inline-block px-3 py-1 rounded-full bg-[#d4af37]/15 border border-[#d4af37]/30 text-[#d4af37] font-mono text-xs font-semibold">
+                      Mã phiếu dịch vụ: #TK-{bookedTicketId}
+                    </span>
+                    {serialNumber && (
+                      <span className="inline-block px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-mono text-xs">
+                        Serial: {serialNumber}
+                      </span>
+                    )}
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground font-light max-w-xs mx-auto leading-relaxed">
-                  Chuyên viên kỹ thuật BRU_WATCH sẽ liên hệ trực tiếp qua số điện thoại của Quý khách để xác nhận cỗ máy và sắp xếp lịch tiếp đón chu đáo.
+                  Hệ thống đã gửi email xác nhận chi tiết về hòm thư của Quý khách. Chuyên viên kỹ thuật sẽ chủ động liên hệ để chuẩn bị đón nhận cỗ máy.
                 </p>
-                <button
-                  type="button"
-                  onClick={() => setIsSubmitted(false)}
-                  className="px-6 py-2.5 rounded-full bg-[#d4af37] text-black text-xs font-mono font-semibold uppercase cursor-pointer"
-                >
-                  Đặt Thêm Lịch Hẹn Khác
-                </button>
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                  <Link
+                    href="/account/services"
+                    className="w-full sm:w-auto px-6 py-2.5 rounded-full bg-gradient-to-r from-[#d4af37] to-[#b38f28] text-black text-xs font-mono font-bold uppercase tracking-wider cursor-pointer shadow-lg shadow-[#d4af37]/20 transition-all text-center"
+                  >
+                    Xem Lịch Hẹn Trong Tài Khoản
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSubmitted(false);
+                      setBookedTicketId(null);
+                    }}
+                    className="w-full sm:w-auto px-5 py-2.5 rounded-full border border-border text-foreground hover:bg-muted/30 text-xs font-mono cursor-pointer transition-colors"
+                  >
+                    Đặt Thêm Lịch Hẹn
+                  </button>
+                </div>
               </div>
             ) : (
               <form onSubmit={handleSubmitBooking} className="space-y-4">
@@ -314,17 +414,58 @@ export default function ServicesPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-[11px] font-mono uppercase text-muted-foreground">
-                    Thương Hiệu & Mẫu Cỗ Máy (hoặc Serial nếu có)
+                  <label className="text-[11px] font-mono uppercase text-muted-foreground flex items-center justify-between">
+                    <span>Email Nhận Xác Nhận Lịch Hẹn</span>
+                    <span className="text-[10px] text-emerald-400 font-mono">Tự động gửi email</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="email@example.com"
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-[#d4af37] font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-mono uppercase text-muted-foreground flex items-center justify-between">
+                    <span>Thương Hiệu & Dòng Cỗ Máy</span>
+                    <span className="text-[10px] text-amber-400 font-mono">* Bắt buộc</span>
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="ví dụ: Rolex Submariner / Casio Edifice..."
+                    placeholder="ví dụ: Rolex Submariner Date, Cartier Santos, Casio Edifice..."
                     value={watchInfo}
                     onChange={(e) => setWatchInfo(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-[#d4af37]"
                   />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-mono uppercase text-muted-foreground flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <FontAwesomeIcon icon={faCertificate} className="w-3 h-3 text-[#d4af37]" />
+                      <span>Số Serial / Mã Khắc Đáy (Nếu Có)</span>
+                    </span>
+                    <span className="text-[10px] text-muted-foreground font-mono">Không bắt buộc</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="ví dụ: SN-8-1-GENEVE hoặc mã khắc sau nắp đáy..."
+                      value={serialNumber}
+                      onChange={(e) => setSerialNumber(e.target.value.toUpperCase())}
+                      className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-[#070e0a] border border-[#d4af37]/30 text-xs text-[#f3e3be] placeholder:text-muted-foreground/60 focus:outline-none focus:border-[#d4af37] font-mono uppercase tracking-wider transition-colors"
+                    />
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
+                      <FontAwesomeIcon icon={faBarcode} className="w-3.5 h-3.5 text-[#d4af37]/70" />
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground font-light leading-tight">
+                    Đối với cỗ máy mua tại BRU_WATCH, số Serial giúp chuyên viên tra cứu chứng thư bảo hành và lịch sử bảo dưỡng ngay lập tức.
+                  </p>
                 </div>
 
                 <div className="space-y-1.5">
@@ -370,12 +511,77 @@ export default function ServicesPage() {
                   </div>
                 </div>
 
+                {/* Khối Nhập Địa Chỉ Tận Nơi khi chọn Tiếp Nhận Tận Nơi */}
+                {locationType === "home" && (
+                  <div className="space-y-3 p-4 rounded-2xl bg-emerald-950/20 border border-emerald-500/30 animate-fadeIn">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-mono uppercase text-emerald-400 font-semibold flex items-center gap-1.5">
+                        <FontAwesomeIcon icon={faLocationDot} className="text-xs" />
+                        <span>Địa Chỉ Tiếp Nhận Cỗ Máy Tận Nơi *</span>
+                      </label>
+                      {addresses && addresses.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setUseCustomAddress(!useCustomAddress)}
+                          className="text-[#d4af37] text-[10px] font-mono hover:underline cursor-pointer"
+                        >
+                          {useCustomAddress ? "Chọn từ Sổ địa chỉ" : "+ Nhập địa chỉ khác"}
+                        </button>
+                      )}
+                    </div>
+
+                    {addresses && addresses.length > 0 && !useCustomAddress ? (
+                      <div className="space-y-1.5">
+                        <select
+                          value={selectedAddressId}
+                          onChange={(e) => {
+                            setSelectedAddressId(e.target.value);
+                            const matched = addresses.find((a) => String(a.id) === e.target.value);
+                            if (matched) setPickupAddress(matched.address);
+                          }}
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border text-xs text-foreground focus:outline-none focus:border-[#d4af37]"
+                        >
+                          {addresses.map((a) => (
+                            <option key={a.id} value={a.id}>
+                              {a.receiverName} ({a.phone}) - {a.address} {a.isDefault ? "[Mặc định]" : ""}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : (
+                      <textarea
+                        rows={2}
+                        required
+                        placeholder="Quý khách vui lòng nhập số nhà, tên đường, phường/xã, quận/huyện, tỉnh/TP để chuyên viên bảo an đến tận nơi tiếp nhận..."
+                        value={pickupAddress}
+                        onChange={(e) => setPickupAddress(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-background border border-border focus:border-emerald-500 text-xs text-foreground focus:outline-none placeholder:text-muted-foreground font-sans leading-relaxed"
+                      />
+                    )}
+
+                    <div className="text-[11px] font-mono text-stone-400 flex items-center gap-1.5">
+                      <FontAwesomeIcon icon={faShieldHalved} className="text-emerald-400 text-xs" />
+                      <span>Chuyên viên trang bị vali an ninh chống sốc & niêm phong biên nhận tận tay.</span>
+                    </div>
+                  </div>
+                )}
+
                 <button
                   type="submit"
-                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#d4af37] via-[#c69f2e] to-[#b38f28] text-black font-mono text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-[#d4af37]/20 hover:scale-101 active:scale-99 transition-all cursor-pointer mt-2"
+                  disabled={submitting}
+                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#d4af37] via-[#c69f2e] to-[#b38f28] text-black font-mono text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-[#d4af37]/20 hover:scale-101 active:scale-99 transition-all cursor-pointer mt-2 disabled:opacity-50"
                 >
-                  <FontAwesomeIcon icon={faCalendarCheck} className="w-3.5 h-3.5" />
-                  <span>Xác Nhận Đặt Lịch Hẹn</span>
+                  {submitting ? (
+                    <>
+                      <FontAwesomeIcon icon={faSpinner} className="w-3.5 h-3.5 animate-spin" />
+                      <span>Đang Gửi Lịch Hẹn...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FontAwesomeIcon icon={faCalendarCheck} className="w-3.5 h-3.5" />
+                      <span>Xác Nhận Đặt Lịch Hẹn</span>
+                    </>
+                  )}
                 </button>
               </form>
             )}
@@ -383,5 +589,20 @@ export default function ServicesPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ServicesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen pt-28 pb-20 px-4 text-center text-muted-foreground font-mono text-xs flex items-center justify-center">
+          <FontAwesomeIcon icon={faSpinner} className="w-4 h-4 animate-spin text-[#d4af37] mr-2" />
+          Đang tải bảng giá dịch vụ...
+        </div>
+      }
+    >
+      <ServicesContent />
+    </Suspense>
   );
 }

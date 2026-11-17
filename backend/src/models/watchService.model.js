@@ -35,13 +35,6 @@ export const WatchService = sequelize.define('WatchService', {
     defaultValue: true,
     field: 'is_active',
   },
-  isWarrantyEligible: {
-    type: DataTypes.BOOLEAN,
-    allowNull: false,
-    defaultValue: false,
-    field: 'is_warranty_eligible',
-    comment: '1 = Áp dụng bảo hành miễn phí nếu còn hạn, 0 = Luôn tính phí dịch vụ',
-  },
 }, {
   tableName: 'watch_services',
   timestamps: false,

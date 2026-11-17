@@ -1,5 +1,8 @@
 import WatchScrollHero from "@/components/WatchScrollHero";
 import BoutiqueIntroSection from "@/components/BoutiqueIntroSection";
+import BestSellersSection from "@/components/BestSellersSection";
+import CraftsmanshipSection from "@/components/CraftsmanshipSection";
+import BrandDirectorySection from "@/components/BrandDirectorySection";
 import ProductCatalog from "@/components/ProductCatalog";
 
 export default function Home() {
@@ -11,8 +14,15 @@ export default function Home() {
       {/* 2. Showroom Cinema Player (intro.mp4) */}
       <BoutiqueIntroSection />
 
-      {/* 3. The Complete Collection Catalog (Real Database Products Only) */}
-      <ProductCatalog />
+      {/* 3. Curated Masterpieces & Bestsellers Spotlight */}
+      <BestSellersSection />
+
+      {/* 4. Swiss Haute Horlogerie Craftsmanship & Movement Anatomy */}
+      <CraftsmanshipSection />
+
+      {/* 5. Maison Heritage Brands Directory */}
+      <BrandDirectorySection />
+
     </div>
   );
 }

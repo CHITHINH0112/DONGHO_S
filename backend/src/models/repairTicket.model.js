@@ -9,7 +9,7 @@ export const RepairTicket = sequelize.define('RepairTicket', {
   },
   serialNumberId: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
     field: 'serial_number_id',
     comment: 'Chiếc đồng hồ nào được mang đi sửa',
   },
@@ -48,6 +48,7 @@ export const RepairTicket = sequelize.define('RepairTicket', {
     allowNull: false,
     defaultValue: 'unpaid',
     field: 'payment_status',
+    comment: 'Trạng thái thanh toán',
   },
   status: {
     type: DataTypes.ENUM('received', 'inspecting', 'in_progress', 'completed', 'delivered', 'cancelled'),

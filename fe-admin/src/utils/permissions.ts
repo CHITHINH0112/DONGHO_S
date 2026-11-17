@@ -23,7 +23,8 @@ export type PermissionKey =
   | 'APPROVALS_PROCESS'
   | 'STAFF_MANAGE'
   | 'AUDIT_LOGS_VIEW'
-  | 'SETTINGS_MANAGE';
+  | 'SETTINGS_MANAGE'
+  | 'SHIPMENTS_MANAGE';
 
 // Matrix mapping permissions to positions
 const POSITION_PERMISSIONS: Record<string, PermissionKey[]> = {
@@ -50,6 +51,7 @@ const POSITION_PERMISSIONS: Record<string, PermissionKey[]> = {
     'STAFF_MANAGE',
     'AUDIT_LOGS_VIEW',
     'SETTINGS_MANAGE',
+    'SHIPMENTS_MANAGE',
   ],
 
   // Sales: Tư vấn bán hàng kiêm Thu ngân trực két
@@ -64,6 +66,7 @@ const POSITION_PERMISSIONS: Record<string, PermissionKey[]> = {
     'WARRANTIES_VIEW',
     'APPROVALS_VIEW',
     'APPROVALS_REQUEST',
+    'SHIPMENTS_MANAGE',
   ],
 
   // Warehouse: Thủ kho (Chỉ kiểm định đối chiếu Serial, tình trạng hàng và xác nhận nhập kho)
@@ -73,6 +76,7 @@ const POSITION_PERMISSIONS: Record<string, PermissionKey[]> = {
     'INVENTORY_VIEW', // Vào trang Kiểm Kho & Serial
     'INVENTORY_CONFIRM', // Xác nhận serial & báo sai lệch
     'ORDERS_VIEW', // Xem đơn để điều phối đóng gói & xuất kho
+    'SHIPMENTS_MANAGE',
   ],
 
   // Technician: Kỹ thuật viên đồng hồ, phòng lab bảo hành
@@ -100,6 +104,7 @@ const ROUTE_PERMISSIONS: Record<string, PermissionKey> = {
   '/approvals': 'APPROVALS_VIEW',
   '/staff': 'STAFF_MANAGE',
   '/settings': 'SETTINGS_MANAGE',
+  '/shipments': 'SHIPMENTS_MANAGE',
 };
 
 /**

@@ -13,6 +13,10 @@ export interface UserAddress {
   phone: string;
   address: string;
   city: string;
+  province?: string;
+  district?: string;
+  ward?: string;
+  detailAddress?: string;
   isDefault: boolean;
   tag?: "Tư gia" | "Dinh thự" | "Văn phòng VIP" | "Boutique" | string;
 }
@@ -62,7 +66,8 @@ interface AuthContextType {
   loginWithGoogle: (data: { email?: string; name?: string; credential?: string; googleId?: string; avatar?: string; accessToken?: string; idToken?: string }) => Promise<{ success: boolean; message?: string }>;
   openGoogleOAuthPopup: () => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
-  updateProfile: (profile: Partial<UserProfile>) => void;
+  updateProfile: (profile: Partial<UserProfile>) => Promise<{ success: boolean; message?: string }>;
+  changePassword: (data: { oldPassword?: string; newPassword: string; confirmPassword: string }) => Promise<{ success: boolean; message?: string }>;
   addAddress: (addr: Omit<UserAddress, "id">) => Promise<void> | void;
   updateAddress: (id: string, addr: Partial<UserAddress>) => Promise<void> | void;
   deleteAddress: (id: string) => Promise<void> | void;
@@ -93,19 +98,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await apiClient.get("/user-addresses");
       const list = res.data?.data;
       if (Array.isArray(list)) {
-        const mapped: UserAddress[] = list.map((item: any) => ({
-          id: String(item.id),
-          receiverName: item.receiverName || item.receiver_name || "",
-          phone: item.phone || "",
-          address: item.address || "",
-          city: item.address?.includes("Hà Nội") ? "Hà Nội" : "TP. Hồ Chí Minh",
-          isDefault: Boolean(item.isDefault ?? item.is_default),
-          tag: item.address?.includes("Công ty") || item.address?.includes("Tòa nhà") || item.address?.includes("Bitexco")
-            ? "Văn phòng VIP"
-            : item.address?.includes("Nhà riêng")
-            ? "Tư gia"
-            : "Dinh thự",
-        }));
+        const mapped: UserAddress[] = list.map((item: any) => {
+          const rawAddr = item.address || "";
+          const parts = rawAddr.split(",").map((s: string) => s.trim());
+          const province = parts.length >= 1 ? parts[parts.length - 1] : "TP. Hồ Chí Minh";
+          const district = parts.length >= 2 ? parts[parts.length - 2] : "";
+          const ward = parts.length >= 3 ? parts[parts.length - 3] : "";
+          const detailAddress = parts.length >= 4 ? parts.slice(0, parts.length - 3).join(", ") : rawAddr;
+
+          return {
+            id: String(item.id),
+            receiverName: item.receiverName || item.receiver_name || "",
+            phone: item.phone || "",
+            address: rawAddr,
+            city: province,
+            province,
+            district,
+            ward,
+            detailAddress,
+            isDefault: Boolean(item.isDefault ?? item.is_default),
+            tag: rawAddr.includes("Công ty") || rawAddr.includes("Tòa nhà") || rawAddr.includes("Bitexco")
+              ? "Văn phòng VIP"
+              : rawAddr.includes("Nhà riêng")
+              ? "Tư gia"
+              : "Dinh thự",
+          };
+        });
         setAddresses(mapped);
         if (userId) {
           try {
@@ -443,10 +461,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setOrders([]);
   };
 
-  const updateProfile = (data: Partial<UserProfile>) => {
-    if (!user) return;
-    const updated = { ...user, ...data };
-    saveUser(updated);
+  const updateProfile = async (data: Partial<UserProfile>): Promise<{ success: boolean; message?: string }> => {
+    if (!user) return { success: false, message: "Chưa đăng nhập" };
+    try {
+      const res = await apiClient.put("/auth/profile", {
+        name: data.name,
+        phone: data.phone,
+      });
+      if (res.data?.success && res.data?.data) {
+        const updated = { ...user, ...res.data.data };
+        saveUser(updated);
+        return { success: true, message: res.data.message || "Cập nhật hồ sơ thành công" };
+      }
+      return { success: false, message: res.data?.message || "Không thể cập nhật hồ sơ" };
+    } catch (err: any) {
+      const msg = err.response?.data?.message || "Lỗi khi cập nhật hồ sơ cá nhân";
+      return { success: false, message: msg };
+    }
+  };
+
+  const changePassword = async (data: { oldPassword?: string; newPassword: string; confirmPassword: string }): Promise<{ success: boolean; message?: string }> => {
+    try {
+      const res = await apiClient.put("/auth/change-password", data);
+      if (res.data?.success) {
+        return { success: true, message: res.data.message || "Đổi mật khẩu thành công" };
+      }
+      return { success: false, message: res.data?.message || "Đổi mật khẩu thất bại" };
+    } catch (err: any) {
+      const msg = err.response?.data?.message || "Lỗi khi đổi mật khẩu";
+      return { success: false, message: msg };
+    }
   };
 
   const addAddress = async (addr: Omit<UserAddress, "id">) => {
@@ -649,6 +693,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         openGoogleOAuthPopup,
         logout,
         updateProfile,
+        changePassword,
         addAddress,
         updateAddress,
         deleteAddress,

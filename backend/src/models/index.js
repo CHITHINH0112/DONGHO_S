@@ -85,11 +85,10 @@ ProductVariantImage.belongsTo(ProductVariant, { foreignKey: 'variant_id', as: 'v
 // --- Product Variants & Serial Numbers ---
 ProductVariant.hasMany(SerialNumber, { foreignKey: 'variant_id', as: 'serialNumbers' });
 SerialNumber.belongsTo(ProductVariant, { foreignKey: 'variant_id', as: 'variant' });
-// --- Serial Numbers & Admins (Import & Warehouse Confirmation) ---
-SerialNumber.belongsTo(Admin, { as: 'importedBy', foreignKey: 'imported_by_admin_id' });
-SerialNumber.belongsTo(Admin, { as: 'warehouseStaff', foreignKey: 'warehouse_confirmed_by' });
-Admin.hasMany(SerialNumber, { as: 'importedSerials', foreignKey: 'imported_by_admin_id' });
-Admin.hasMany(SerialNumber, { as: 'confirmedSerials', foreignKey: 'warehouse_confirmed_by' });
+// SerialNumber.belongsTo(Admin, { as: 'importedBy', foreignKey: 'imported_by_admin_id' });
+// SerialNumber.belongsTo(Admin, { as: 'warehouseStaff', foreignKey: 'warehouse_confirmed_by' });
+// Admin.hasMany(SerialNumber, { as: 'importedSerials', foreignKey: 'imported_by_admin_id' });
+// Admin.hasMany(SerialNumber, { as: 'confirmedSerials', foreignKey: 'warehouse_confirmed_by' });
 
 
 // --- User & Addresses ---

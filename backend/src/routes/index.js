@@ -18,6 +18,8 @@ import uploadRouter from './upload.route.js';
 import featureRouter from './feature.route.js';
 import serialRouter from './serial.route.js';
 import userRouter from './user.route.js';
+import paymentRouter from './payment.route.js';
+import shipmentRouter from './shipment.route.js';
 
 const router = express.Router();
 
@@ -78,5 +80,7 @@ router.use('/features', featureRouter);
 router.use('/serials', serialRouter);
 router.use('/users', userRouter);
 router.use('/user', userRouter);
+router.use('/payment', paymentRouter);
+router.use('/shipments', shipmentRouter);
 
 export default router;

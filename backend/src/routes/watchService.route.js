@@ -6,6 +6,7 @@ import {
   getRepairTickets,
   createRepairTicket,
   updateTicketStatus,
+  cancelRepairTicket,
 } from '../controllers/watchService.controller.js';
 import { verifyToken, authorizeRoles, authorizePositions } from '../middlewares/auth.middleware.js';
 import { requireFields } from '../middlewares/validate.middleware.js';
@@ -39,8 +40,14 @@ router.get('/repairs/tickets', verifyToken, getRepairTickets);
 router.post(
   '/repairs/tickets',
   verifyToken,
-  requireFields('serialNumberId', 'serviceId', 'issueDescription'),
+  requireFields('serviceId'),
   createRepairTicket
+);
+
+router.put(
+  '/repairs/tickets/:id/cancel',
+  verifyToken,
+  cancelRepairTicket
 );
 
 router.put(

@@ -15,7 +15,7 @@ router.use(verifyToken);
 
 router.get('/', getCart);
 router.post('/items', requireFields('variantId'), addToCart);
-router.put('/items/:itemId', requireFields('quantity'), updateCartItem);
+router.put('/items/:itemId', updateCartItem);
 router.delete('/items/:itemId', removeCartItem);
 router.delete('/', clearCart);
 

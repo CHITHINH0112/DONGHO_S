@@ -78,6 +78,17 @@ export const updateTicketStatus = asyncHandler(async (req, res) => {
   });
 });
 
+export const cancelRepairTicket = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const ticket = await watchServiceService.cancelRepairTicket(id, req.user);
+
+  return successResponse(res, {
+    message: 'Đã hủy lịch hẹn dịch vụ thành công',
+    data: ticket,
+  });
+});
+
 export default {
   getServices,
   createService,
@@ -85,4 +96,5 @@ export default {
   getRepairTickets,
   createRepairTicket,
   updateTicketStatus,
+  cancelRepairTicket,
 };

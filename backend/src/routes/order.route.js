@@ -6,6 +6,8 @@ import {
   updateOrderStatus,
   requestOrderReturn,
   updateShipment,
+  retryOrderPayment,
+  cancelOrder,
 } from '../controllers/order.controller.js';
 import { verifyToken, authorizeRoles, authorizePositions } from '../middlewares/auth.middleware.js';
 import { requireFields } from '../middlewares/validate.middleware.js';
@@ -18,6 +20,8 @@ router.use(verifyToken);
 router.post('/', requireFields('items'), createOrder);
 router.get('/', getOrders);
 router.get('/:id', getOrderDetail);
+router.post('/:id/repay', retryOrderPayment);
+router.post('/:id/cancel', cancelOrder);
 
 // Đổi trả hàng (Khách hàng hoặc Sales)
 router.post(
